@@ -1,0 +1,6 @@
+{
+  "name": "RUSHU FIN",
+  "description": "Ultra-modern Personal Finance and Liability Tracking Android app with Glassmorphism, Dual Ledgers, and Google Drive Cloud Sync",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
