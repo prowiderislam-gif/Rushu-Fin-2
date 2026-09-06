@@ -1,0 +1,1816 @@
+package com.example.ui.screens
+
+import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.R
+import com.example.data.model.LiabilityEntity
+import com.example.data.model.TransactionEntity
+import com.example.ui.components.GlassBox
+import com.example.ui.components.GlowingPayoffProgressBar
+import com.example.ui.components.neonTextStyle
+import com.example.ui.theme.CanvasBackground
+import com.example.ui.theme.CardGlass
+import com.example.ui.theme.CardGlassBorder
+import com.example.ui.theme.NeonCyan
+import com.example.ui.theme.NeonCyanGlow
+import com.example.ui.theme.NeonGreen
+import com.example.ui.theme.NeonGreenGlow
+import com.example.ui.theme.NeonPurple
+import com.example.ui.theme.NeonRed
+import com.example.ui.theme.NeonRedGlow
+import com.example.ui.theme.NeonYellow
+import com.example.ui.theme.NeonYellowGlow
+import com.example.ui.theme.SurfaceDark
+import com.example.ui.theme.TextMuted
+import com.example.ui.theme.TextPrimary
+import com.example.ui.theme.TextSecondary
+import com.example.ui.viewmodel.FinanceUiState
+import com.example.ui.viewmodel.FinanceViewModel
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+@Composable
+fun DashboardScreen(
+    viewModel: FinanceViewModel,
+    modifier: Modifier = Modifier
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val transactions by viewModel.transactions.collectAsStateWithLifecycle()
+    val liabilities by viewModel.liabilities.collectAsStateWithLifecycle()
+    val isAdminMode by viewModel.isAdminMode.collectAsStateWithLifecycle()
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
+
+    // Dialog States
+    var showAdminUnlockDialog by remember { mutableStateOf(false) }
+    var showEditInitialBalanceDialog by remember { mutableStateOf(false) }
+    var showSettingsDialog by remember { mutableStateOf(false) }
+    var editingTransaction by remember { mutableStateOf<TransactionEntity?>(null) }
+    var editingLiability by remember { mutableStateOf<LiabilityEntity?>(null) }
+
+    // Google Sign-In Launcher
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            try {
+                val account = task.result
+                if (account != null) {
+                    viewModel.onGoogleSignInSuccess(account)
+                }
+            } catch (e: Exception) {
+                scope.launch { snackbarHostState.showSnackbar("Sign in error: ${e.localizedMessage}") }
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.userFeedback.collectLatest { msg ->
+            snackbarHostState.showSnackbar(msg)
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(CanvasBackground)
+    ) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            contentPadding = WindowInsets.systemBars.asPaddingValues(),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // App Header Bar with Branding & Quick Actions
+            item {
+                AppHeader(
+                    isAdminMode = isAdminMode,
+                    googleEmail = uiState.googleAccountEmail,
+                    lastSyncTime = uiState.lastSyncTime,
+                    onAdminToggleClick = {
+                        if (isAdminMode) {
+                            viewModel.lockAdminMode()
+                        } else {
+                            showAdminUnlockDialog = true
+                        }
+                    },
+                    onSettingsClick = { showSettingsDialog = true }
+                )
+            }
+
+            // Top Section — Main Live Balance Box
+            item {
+                MainLiveBalanceCard(
+                    uiState = uiState
+                )
+            }
+
+            // Middle Section — Split Balance Row (Yellow Glass Fixed vs Dynamic Liability)
+            item {
+                SplitBalanceRow(
+                    uiState = uiState,
+                    isAdminMode = isAdminMode,
+                    onEditInitialBalance = {
+                        if (isAdminMode) {
+                            showEditInitialBalanceDialog = true
+                        } else {
+                            showAdminUnlockDialog = true
+                        }
+                    }
+                )
+            }
+
+            // Dynamic Liability Payoff Progress Indicator
+            item {
+                GlowingPayoffProgressBar(
+                    currentLiability = uiState.currentLiability,
+                    peakLiability = uiState.peakLiability,
+                    currencySymbol = uiState.currencySymbol
+                )
+            }
+
+            // Lower-Middle Section — Normal Income & Expense Transactions Input
+            item {
+                NormalTransactionModule(
+                    currencySymbol = uiState.currencySymbol,
+                    onRecordTransaction = { amount, type, desc, pin, onDone ->
+                        viewModel.addTransaction(amount, type, desc, pin, onDone)
+                    }
+                )
+            }
+
+            // Bottom Section — Independent Liability Management Module
+            item {
+                LiabilityManagementModule(
+                    currencySymbol = uiState.currencySymbol,
+                    onRecordLiability = { amount, actionType, desc, pin, onDone ->
+                        viewModel.addLiability(amount, actionType, desc, pin, onDone)
+                    }
+                )
+            }
+
+            // Dual Permanent Ledgers (Main Financial Ledger & Independent Liability Ledger)
+            item {
+                AuditLedgersSection(
+                    transactions = transactions,
+                    liabilities = liabilities,
+                    currencySymbol = uiState.currencySymbol,
+                    isAdminMode = isAdminMode,
+                    onEditTx = { tx -> editingTransaction = tx },
+                    onDeleteTx = { tx -> viewModel.deleteTransactionWithAdmin(tx) },
+                    onEditLiability = { l -> editingLiability = l },
+                    onDeleteLiability = { l -> viewModel.deleteLiabilityWithAdmin(l) }
+                )
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(32.dp))
+            }
+        }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 24.dp)
+        )
+    }
+
+    // Dialogs
+    if (showAdminUnlockDialog) {
+        AdminUnlockDialog(
+            onDismiss = { showAdminUnlockDialog = false },
+            onUnlock = { pin ->
+                if (viewModel.verifyAndUnlockAdminMode(pin)) {
+                    showAdminUnlockDialog = false
+                }
+            }
+        )
+    }
+
+    if (showEditInitialBalanceDialog) {
+        EditInitialBalanceDialog(
+            currentBalance = uiState.initialBalance,
+            currencySymbol = uiState.currencySymbol,
+            onDismiss = { showEditInitialBalanceDialog = false },
+            onConfirm = { newBal ->
+                viewModel.updateInitialBalanceWithTier2(newBal) {
+                    showEditInitialBalanceDialog = false
+                }
+            }
+        )
+    }
+
+    if (showSettingsDialog) {
+        SettingsAndCloudSyncDialog(
+            uiState = uiState,
+            onDismiss = { showSettingsDialog = false },
+            onSignInGoogle = {
+                googleSignInLauncher.launch(viewModel.driveSyncManager.getSignInIntent())
+            },
+            onBackupNow = { viewModel.performCloudBackup() },
+            onRestoreNow = { viewModel.performCloudRestore() },
+            onChangePasswords = { t1, t2, onDone ->
+                viewModel.updatePasswords(t1, t2, onDone)
+            }
+        )
+    }
+
+    editingTransaction?.let { tx ->
+        EditTransactionDialog(
+            transaction = tx,
+            currencySymbol = uiState.currencySymbol,
+            onDismiss = { editingTransaction = null },
+            onConfirm = { updated ->
+                viewModel.updateTransactionWithAdmin(updated) {
+                    editingTransaction = null
+                }
+            }
+        )
+    }
+
+    editingLiability?.let { liability ->
+        EditLiabilityDialog(
+            liability = liability,
+            currencySymbol = uiState.currencySymbol,
+            onDismiss = { editingLiability = null },
+            onConfirm = { updated ->
+                viewModel.updateLiabilityWithAdmin(updated) {
+                    editingLiability = null
+                }
+            }
+        )
+    }
+}
+
+/**
+ * App Header with Branding, Admin Mode status, and Cloud Sync toggle.
+ */
+@Composable
+fun AppHeader(
+    isAdminMode: Boolean,
+    googleEmail: String?,
+    lastSyncTime: Long,
+    onAdminToggleClick: () -> Unit,
+    onSettingsClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // App Logo & Title
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .border(1.5.dp, NeonCyan, CircleShape)
+                    .background(Color(0xFF101014)),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.rushu_fin_logo),
+                    contentDescription = "RUSHU FIN Logo",
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+
+            Column {
+                Text(
+                    text = "RUSHU FIN",
+                    style = neonTextStyle(NeonCyan, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, glowRadius = 16f)
+                )
+                Text(
+                    text = "Personal Finance & Liability Tracking",
+                    color = TextSecondary,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+
+        // Action Buttons: Admin Mode Chip & Settings
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Admin Mode Chip
+            Surface(
+                onClick = onAdminToggleClick,
+                shape = RoundedCornerShape(20.dp),
+                color = if (isAdminMode) NeonRed.copy(alpha = 0.2f) else CardGlass,
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    if (isAdminMode) NeonRed else CardGlassBorder
+                ),
+                modifier = Modifier.testTag("admin_mode_toggle")
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isAdminMode) Icons.Default.LockOpen else Icons.Default.Lock,
+                        contentDescription = null,
+                        tint = if (isAdminMode) NeonRed else TextMuted,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Text(
+                        text = if (isAdminMode) "ADMIN ON" else "TIER 2",
+                        color = if (isAdminMode) NeonRed else TextSecondary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            // Settings & Google Drive Sync Button
+            IconButton(
+                onClick = onSettingsClick,
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(CardGlass)
+                    .border(1.dp, CardGlassBorder, CircleShape)
+                    .testTag("settings_button")
+            ) {
+                Icon(
+                    imageVector = if (googleEmail != null) Icons.Default.CloudDone else Icons.Default.Settings,
+                    contentDescription = "Settings & Cloud Sync",
+                    tint = if (googleEmail != null) NeonGreen else TextSecondary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Top Section — Main Live Balance Box:
+ * A large, prominent glassmorphic box spanning full width at the very top.
+ * Features dynamic Green inner glow if balance >= 0, and Red inner glow if balance < 0.
+ * Displays calculated live balance: Initial Fixed Amount + Income - Expenses.
+ * Strictly non-editable directly.
+ */
+@Composable
+fun MainLiveBalanceCard(
+    uiState: FinanceUiState,
+    modifier: Modifier = Modifier
+) {
+    val isPositive = uiState.liveBalance >= 0
+    val glowColor = if (isPositive) NeonGreen else NeonRed
+    val textColor = if (isPositive) NeonGreen else NeonRed
+
+    GlassBox(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        glowColor = glowColor,
+        glowIntensity = 0.55f
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "MAIN LIVE BALANCE",
+                    style = neonTextStyle(glowColor, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, glowRadius = 10f)
+                )
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = glowColor.copy(alpha = 0.15f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, glowColor.copy(alpha = 0.5f))
+                ) {
+                    Text(
+                        text = if (isPositive) "SURPLUS" else "DEFICIT",
+                        color = glowColor,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Calculated Live Net Balance
+            Text(
+                text = String.format(Locale.getDefault(), "%s %,.2f", uiState.currencySymbol, uiState.liveBalance),
+                style = neonTextStyle(textColor, fontSize = 36.sp, fontWeight = FontWeight.Black, glowRadius = 24f),
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Non-editable calculation formula badge
+            Text(
+                text = "Formula: Initial (${uiState.currencySymbol}${uiState.initialBalance.toInt()}) + Income (${uiState.currencySymbol}${uiState.totalIncome.toInt()}) - Expenses (${uiState.currencySymbol}${uiState.totalExpense.toInt()})",
+                color = TextSecondary,
+                fontSize = 11.sp,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            HorizontalDivider(color = CardGlassBorder.copy(alpha = 0.4f), thickness = 1.dp)
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Income and Expense breakdown row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(26.dp)
+                            .clip(CircleShape)
+                            .background(NeonGreen.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowUpward,
+                            contentDescription = null,
+                            tint = NeonGreen,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                    Column {
+                        Text(text = "Total Income", color = TextMuted, fontSize = 10.sp)
+                        Text(
+                            text = String.format(Locale.getDefault(), "+%s%,.2f", uiState.currencySymbol, uiState.totalIncome),
+                            color = NeonGreen,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(26.dp)
+                            .clip(CircleShape)
+                            .background(NeonRed.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowDownward,
+                            contentDescription = null,
+                            tint = NeonRed,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                    Column {
+                        Text(text = "Total Expenses", color = TextMuted, fontSize = 10.sp)
+                        Text(
+                            text = String.format(Locale.getDefault(), "-%s%,.2f", uiState.currencySymbol, uiState.totalExpense),
+                            color = NeonRed,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Middle Section — Split Balance Row:
+ * Two equal-half glass boxes side-by-side:
+ * Left Box (Yellow Glass - Fixed Initial Balance): Inner glowing yellow light, stores baseline starting funds.
+ * Right Box (Dynamic Red/Green Glass - Liabilities): Red inner glow when liability > 0, turns Green once liability reaches 0.
+ */
+@Composable
+fun SplitBalanceRow(
+    uiState: FinanceUiState,
+    isAdminMode: Boolean,
+    onEditInitialBalance: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isDebtFree = uiState.currentLiability <= 0.001
+    val liabilityGlow = if (isDebtFree) NeonGreen else NeonRed
+    val liabilityText = if (isDebtFree) NeonGreen else NeonRed
+
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Left Box: Yellow Glass (Fixed Initial Balance)
+        GlassBox(
+            modifier = Modifier
+                .weight(1f)
+                .clickable { onEditInitialBalance() }
+                .testTag("fixed_initial_balance_card"),
+            shape = RoundedCornerShape(20.dp),
+            glowColor = NeonYellow,
+            glowIntensity = 0.4f
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "FIXED INITIAL",
+                        style = neonTextStyle(NeonYellow, fontSize = 11.sp, fontWeight = FontWeight.Bold, glowRadius = 10f)
+                    )
+                    Icon(
+                        imageVector = if (isAdminMode) Icons.Default.Edit else Icons.Default.Lock,
+                        contentDescription = "Edit with Tier 2",
+                        tint = if (isAdminMode) NeonYellow else TextMuted,
+                        modifier = Modifier.size(15.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text(
+                    text = String.format(Locale.getDefault(), "%s %,.2f", uiState.currencySymbol, uiState.initialBalance),
+                    style = neonTextStyle(NeonYellow, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, glowRadius = 14f)
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Text(
+                    text = if (isAdminMode) "Tap to edit (Admin)" else "Tier 2 protected",
+                    color = TextMuted,
+                    fontSize = 10.sp
+                )
+            }
+        }
+
+        // Right Box: Dynamic Red/Green Glass (Interest & Liabilities)
+        GlassBox(
+            modifier = Modifier
+                .weight(1f)
+                .testTag("liabilities_card"),
+            shape = RoundedCornerShape(20.dp),
+            glowColor = liabilityGlow,
+            glowIntensity = 0.45f
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "LIABILITIES",
+                        style = neonTextStyle(liabilityText, fontSize = 11.sp, fontWeight = FontWeight.Bold, glowRadius = 10f)
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = liabilityGlow.copy(alpha = 0.2f),
+                        border = androidx.compose.foundation.BorderStroke(0.5.dp, liabilityGlow.copy(alpha = 0.5f))
+                    ) {
+                        Text(
+                            text = if (isDebtFree) "CLEAR" else "DEBT",
+                            color = liabilityGlow,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text(
+                    text = String.format(Locale.getDefault(), "%s %,.2f", uiState.currencySymbol, uiState.currentLiability),
+                    style = neonTextStyle(liabilityText, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, glowRadius = 14f)
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Text(
+                    text = "Tracked independently",
+                    color = TextMuted,
+                    fontSize = 10.sp
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Lower-Middle Section — Normal Income & Expense Transactions Input Card:
+ * Partitioned input cards for +ive (Income) and -ive (Expense).
+ * Requires both amount and mandatory short text description.
+ * Requires Tier 1 Password to record.
+ */
+@Composable
+fun NormalTransactionModule(
+    currencySymbol: String,
+    onRecordTransaction: (amount: Double, type: String, description: String, pin: String, onDone: () -> Unit) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var selectedType by remember { mutableStateOf("INCOME") } // "INCOME" or "EXPENSE"
+    var amountText by remember { mutableStateOf("") }
+    var descriptionText by remember { mutableStateOf("") }
+    var tier1PinText by remember { mutableStateOf("") }
+
+    val isIncome = selectedType == "INCOME"
+    val accentColor = if (isIncome) NeonGreen else NeonRed
+    val accentGlow = if (isIncome) NeonGreenGlow else NeonRedGlow
+
+    GlassBox(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        glowColor = accentColor.copy(alpha = 0.3f),
+        glowIntensity = 0.35f
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "RECORD TRANSACTION",
+                    style = neonTextStyle(NeonCyan, fontSize = 13.sp, fontWeight = FontWeight.Bold, glowRadius = 10f)
+                )
+                Text(
+                    text = "Main Financial Ledger",
+                    color = TextMuted,
+                    fontSize = 11.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Switcher: +ive Income vs -ive Expense
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFF0E0E12))
+                    .border(1.dp, CardGlassBorder, RoundedCornerShape(12.dp))
+                    .padding(3.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (isIncome) NeonGreen.copy(alpha = 0.25f) else Color.Transparent)
+                        .clickable { selectedType = "INCOME" }
+                        .padding(vertical = 10.dp)
+                        .testTag("tab_income"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "+ive INCOME",
+                        style = neonTextStyle(if (isIncome) NeonGreen else TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold, glowRadius = 8f)
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (!isIncome) NeonRed.copy(alpha = 0.25f) else Color.Transparent)
+                        .clickable { selectedType = "EXPENSE" }
+                        .padding(vertical = 10.dp)
+                        .testTag("tab_expense"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "-ive EXPENSE",
+                        style = neonTextStyle(if (!isIncome) NeonRed else TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold, glowRadius = 8f)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Amount Input
+            OutlinedTextField(
+                value = amountText,
+                onValueChange = { amountText = it },
+                label = { Text("Amount ($currencySymbol)") },
+                placeholder = { Text("e.g. 500") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = accentColor,
+                    unfocusedBorderColor = CardGlassBorder,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary,
+                    cursorColor = accentColor
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("transaction_amount_input")
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Description Input (Mandatory)
+            OutlinedTextField(
+                value = descriptionText,
+                onValueChange = { descriptionText = it },
+                label = { Text("Description (Mandatory)") },
+                placeholder = { Text(if (isIncome) "e.g. Salary, Payment From Moni" else "e.g. bought Pen, Groceries") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Next),
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = accentColor,
+                    unfocusedBorderColor = CardGlassBorder,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary,
+                    cursorColor = accentColor
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("transaction_desc_input")
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Tier 1 PIN Input
+            OutlinedTextField(
+                value = tier1PinText,
+                onValueChange = { tier1PinText = it },
+                label = { Text("Tier 1 Password (Default: 1234)") },
+                placeholder = { Text("Enter 4-digit PIN") },
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword, imeAction = ImeAction.Done),
+                singleLine = true,
+                leadingIcon = {
+                    Icon(Icons.Default.Security, contentDescription = null, tint = accentColor)
+                },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = accentColor,
+                    unfocusedBorderColor = CardGlassBorder,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary,
+                    cursorColor = accentColor
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("transaction_tier1_pin_input")
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Submit Button
+            Button(
+                onClick = {
+                    val amt = amountText.toDoubleOrNull() ?: 0.0
+                    onRecordTransaction(amt, selectedType, descriptionText, tier1PinText) {
+                        amountText = ""
+                        descriptionText = ""
+                        tier1PinText = ""
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = accentColor),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .testTag("submit_transaction_button")
+            ) {
+                Text(
+                    text = if (isIncome) "RECORD INCOME (+)" else "RECORD EXPENSE (-)",
+                    color = CanvasBackground,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Bottom Section — Independent Liability Management Module:
+ * Sleekly separated from main transactions so it does NOT clutter the screen.
+ * Allows adding new liabilities (increasing debt balance) or making liability payments/deductions (decreasing debt balance).
+ * Requires a mandatory short text description and Tier 1 Password for every liability entry/payment.
+ * CRITICAL LOGIC RULE: Liability balances and liability payments MUST be stored, tracked, and calculated entirely SEPARATELY.
+ */
+@Composable
+fun LiabilityManagementModule(
+    currencySymbol: String,
+    onRecordLiability: (amount: Double, actionType: String, description: String, pin: String, onDone: () -> Unit) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var selectedAction by remember { mutableStateOf("ADD_LIABILITY") } // "ADD_LIABILITY" or "PAY_LIABILITY"
+    var amountText by remember { mutableStateOf("") }
+    var descriptionText by remember { mutableStateOf("") }
+    var tier1PinText by remember { mutableStateOf("") }
+
+    val isAdding = selectedAction == "ADD_LIABILITY"
+    val accentColor = if (isAdding) NeonRed else NeonCyan
+
+    GlassBox(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        glowColor = accentColor.copy(alpha = 0.3f),
+        glowIntensity = 0.35f
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "INDEPENDENT LIABILITY MODULE",
+                        style = neonTextStyle(accentColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, glowRadius = 10f)
+                    )
+                    Text(
+                        text = "Does NOT deduct or affect main live balance",
+                        color = TextMuted,
+                        fontSize = 10.sp
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Switcher: Add Liability (+Debt) vs Pay Liability (-Debt)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFF0E0E12))
+                    .border(1.dp, CardGlassBorder, RoundedCornerShape(12.dp))
+                    .padding(3.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (isAdding) NeonRed.copy(alpha = 0.25f) else Color.Transparent)
+                        .clickable { selectedAction = "ADD_LIABILITY" }
+                        .padding(vertical = 10.dp)
+                        .testTag("tab_add_liability"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "+ ADD LIABILITY",
+                        style = neonTextStyle(if (isAdding) NeonRed else TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold, glowRadius = 8f)
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (!isAdding) NeonCyan.copy(alpha = 0.25f) else Color.Transparent)
+                        .clickable { selectedAction = "PAY_LIABILITY" }
+                        .padding(vertical = 10.dp)
+                        .testTag("tab_pay_liability"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "- PAY/REDUCE DEBT",
+                        style = neonTextStyle(if (!isAdding) NeonCyan else TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold, glowRadius = 8f)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Amount Input
+            OutlinedTextField(
+                value = amountText,
+                onValueChange = { amountText = it },
+                label = { Text("Liability Amount ($currencySymbol)") },
+                placeholder = { Text("e.g. 2000") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = accentColor,
+                    unfocusedBorderColor = CardGlassBorder,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary,
+                    cursorColor = accentColor
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("liability_amount_input")
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Description Input
+            OutlinedTextField(
+                value = descriptionText,
+                onValueChange = { descriptionText = it },
+                label = { Text("Description / Creditor Note (Mandatory)") },
+                placeholder = { Text(if (isAdding) "e.g. Borrowed from Raj, Loan EMI" else "e.g. Paid installment to Raj") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Next),
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = accentColor,
+                    unfocusedBorderColor = CardGlassBorder,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary,
+                    cursorColor = accentColor
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("liability_desc_input")
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Tier 1 PIN
+            OutlinedTextField(
+                value = tier1PinText,
+                onValueChange = { tier1PinText = it },
+                label = { Text("Tier 1 Password (Default: 1234)") },
+                placeholder = { Text("Enter 4-digit PIN") },
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword, imeAction = ImeAction.Done),
+                singleLine = true,
+                leadingIcon = {
+                    Icon(Icons.Default.Security, contentDescription = null, tint = accentColor)
+                },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = accentColor,
+                    unfocusedBorderColor = CardGlassBorder,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary,
+                    cursorColor = accentColor
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("liability_tier1_pin_input")
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                onClick = {
+                    val amt = amountText.toDoubleOrNull() ?: 0.0
+                    onRecordLiability(amt, selectedAction, descriptionText, tier1PinText) {
+                        amountText = ""
+                        descriptionText = ""
+                        tier1PinText = ""
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = accentColor),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .testTag("submit_liability_button")
+            ) {
+                Text(
+                    text = if (isAdding) "RECORD NEW DEBT (+)" else "RECORD DEBT PAYMENT (-)",
+                    color = CanvasBackground,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Dual Permanent Ledgers:
+ * Ledger 1: Main Financial Ledger (Date, Time, Amount, Type, Description). Color-coded:
+ *   +ive Income in vibrant Glowing Neon Green
+ *   -ive Expense in vibrant Glowing Neon Red
+ * Ledger 2: Independent Liability Ledger (Date, Time, Amount, Action Type, Description).
+ * Immutability by default; Admin Mode (Tier 2) allows Edit & Delete!
+ */
+@Composable
+fun AuditLedgersSection(
+    transactions: List<TransactionEntity>,
+    liabilities: List<LiabilityEntity>,
+    currencySymbol: String,
+    isAdminMode: Boolean,
+    onEditTx: (TransactionEntity) -> Unit,
+    onDeleteTx: (TransactionEntity) -> Unit,
+    onEditLiability: (LiabilityEntity) -> Unit,
+    onDeleteLiability: (LiabilityEntity) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var selectedTab by remember { mutableIntStateOf(0) } // 0: Main Ledger, 1: Liability Ledger
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "PERMANENT AUDIT LEDGERS",
+                style = neonTextStyle(NeonCyan, fontSize = 13.sp, fontWeight = FontWeight.Bold, glowRadius = 10f)
+            )
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = if (isAdminMode) NeonRed.copy(alpha = 0.2f) else CardGlass,
+                border = androidx.compose.foundation.BorderStroke(1.dp, if (isAdminMode) NeonRed else CardGlassBorder)
+            ) {
+                Text(
+                    text = if (isAdminMode) "ADMIN OVERRIDE ACTIVE" else "IMMUTABLE AUDIT",
+                    color = if (isAdminMode) NeonRed else TextSecondary,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Ledger Switcher Tabs
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color(0xFF0E0E12))
+                .border(1.dp, CardGlassBorder, RoundedCornerShape(12.dp))
+                .padding(4.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (selectedTab == 0) CardGlass else Color.Transparent)
+                    .clickable { selectedTab = 0 }
+                    .padding(vertical = 8.dp)
+                    .testTag("tab_main_ledger"),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Main Ledger (${transactions.size})",
+                    color = if (selectedTab == 0) NeonGreen else TextSecondary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (selectedTab == 1) CardGlass else Color.Transparent)
+                    .clickable { selectedTab = 1 }
+                    .padding(vertical = 8.dp)
+                    .testTag("tab_liability_ledger"),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Liability Ledger (${liabilities.size})",
+                    color = if (selectedTab == 1) NeonCyan else TextSecondary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        if (selectedTab == 0) {
+            // Main Ledger Entries
+            if (transactions.isEmpty()) {
+                EmptyLedgerCard(message = "No transactions logged yet. Add your first income or expense above!")
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    transactions.forEach { tx ->
+                        TransactionItemCard(
+                            transaction = tx,
+                            currencySymbol = currencySymbol,
+                            isAdminMode = isAdminMode,
+                            onEdit = { onEditTx(tx) },
+                            onDelete = { onDeleteTx(tx) }
+                        )
+                    }
+                }
+            }
+        } else {
+            // Liability Ledger Entries
+            if (liabilities.isEmpty()) {
+                EmptyLedgerCard(message = "No liability records found. Record borrowings or debt payments above!")
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    liabilities.forEach { liability ->
+                        LiabilityItemCard(
+                            liability = liability,
+                            currencySymbol = currencySymbol,
+                            isAdminMode = isAdminMode,
+                            onEdit = { onEditLiability(liability) },
+                            onDelete = { onDeleteLiability(liability) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TransactionItemCard(
+    transaction: TransactionEntity,
+    currencySymbol: String,
+    isAdminMode: Boolean,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isIncome = transaction.type.equals("INCOME", ignoreCase = true)
+    val itemColor = if (isIncome) NeonGreen else NeonRed
+    val itemGlow = if (isIncome) NeonGreenGlow else NeonRedGlow
+
+    GlassBox(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        glowColor = itemColor.copy(alpha = 0.25f),
+        glowIntensity = 0.25f
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                // Sleek glowing indicator line
+                Box(
+                    modifier = Modifier
+                        .width(3.dp)
+                        .height(36.dp)
+                        .clip(CircleShape)
+                        .background(itemColor)
+                )
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = transaction.description,
+                        style = neonTextStyle(itemColor, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, glowRadius = 8f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "${transaction.dateString} • ${transaction.timeString}",
+                        color = TextMuted,
+                        fontSize = 11.sp
+                    )
+                }
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = String.format(
+                        Locale.getDefault(),
+                        "%s%s %,.2f",
+                        if (isIncome) "+" else "-",
+                        currencySymbol,
+                        transaction.amount
+                    ),
+                    style = neonTextStyle(itemColor, fontSize = 16.sp, fontWeight = FontWeight.Bold, glowRadius = 10f)
+                )
+
+                if (isAdminMode) {
+                    IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit Transaction", tint = NeonCyan, modifier = Modifier.size(16.dp))
+                    }
+                    IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete Transaction", tint = NeonRed, modifier = Modifier.size(16.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun LiabilityItemCard(
+    liability: LiabilityEntity,
+    currencySymbol: String,
+    isAdminMode: Boolean,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isAdd = liability.actionType.equals("ADD_LIABILITY", ignoreCase = true)
+    val itemColor = if (isAdd) NeonRed else NeonCyan
+
+    GlassBox(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        glowColor = itemColor.copy(alpha = 0.25f),
+        glowIntensity = 0.25f
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(3.dp)
+                        .height(36.dp)
+                        .clip(CircleShape)
+                        .background(itemColor)
+                )
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = liability.description,
+                            style = neonTextStyle(itemColor, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, glowRadius = 8f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "${if (isAdd) "Added Debt" else "Payment Made"} • ${liability.dateString} • ${liability.timeString}",
+                        color = TextMuted,
+                        fontSize = 11.sp
+                    )
+                }
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = String.format(
+                        Locale.getDefault(),
+                        "%s%s %,.2f",
+                        if (isAdd) "+" else "-",
+                        currencySymbol,
+                        liability.amount
+                    ),
+                    style = neonTextStyle(itemColor, fontSize = 16.sp, fontWeight = FontWeight.Bold, glowRadius = 10f)
+                )
+
+                if (isAdminMode) {
+                    IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit Liability", tint = NeonCyan, modifier = Modifier.size(16.dp))
+                    }
+                    IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete Liability", tint = NeonRed, modifier = Modifier.size(16.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun EmptyLedgerCard(message: String) {
+    GlassBox(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(Icons.Default.Security, contentDescription = null, tint = TextMuted, modifier = Modifier.size(28.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = message,
+                color = TextSecondary,
+                fontSize = 12.sp,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+// ----------------------------------------------------
+// Dialogs: Security Tiers, Settings, Cloud Sync, Edits
+// ----------------------------------------------------
+
+@Composable
+fun AdminUnlockDialog(
+    onDismiss: () -> Unit,
+    onUnlock: (pin: String) -> Unit
+) {
+    var pinText by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = SurfaceDark,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Default.Key, contentDescription = null, tint = NeonRed)
+                Text(text = "Tier 2 Emergency Protocol", color = TextPrimary, fontWeight = FontWeight.Bold)
+            }
+        },
+        text = {
+            Column {
+                Text(
+                    text = "Enter Master Password to unlock Admin Mode. This grants permission to modify baseline balances and past immutable audit logs.",
+                    color = TextSecondary,
+                    fontSize = 13.sp
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+                OutlinedTextField(
+                    value = pinText,
+                    onValueChange = { pinText = it },
+                    label = { Text("Master Password (Default: 9999)") },
+                    placeholder = { Text("Enter Tier 2 password") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = NeonRed,
+                        unfocusedBorderColor = CardGlassBorder,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                        cursorColor = NeonRed
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("admin_pin_input")
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onUnlock(pinText) },
+                colors = ButtonDefaults.buttonColors(containerColor = NeonRed),
+                modifier = Modifier.testTag("unlock_admin_confirm_button")
+            ) {
+                Text("UNLOCK ADMIN MODE", color = CanvasBackground, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("CANCEL", color = TextSecondary)
+            }
+        }
+    )
+}
+
+@Composable
+fun EditInitialBalanceDialog(
+    currentBalance: Double,
+    currencySymbol: String,
+    onDismiss: () -> Unit,
+    onConfirm: (Double) -> Unit
+) {
+    var balanceText by remember { mutableStateOf(currentBalance.toString()) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = SurfaceDark,
+        title = {
+            Text(text = "Edit Fixed Baseline Balance", color = NeonYellow, fontWeight = FontWeight.Bold)
+        },
+        text = {
+            Column {
+                Text(
+                    text = "Set the starting baseline funds for RUSHU FIN. Changes take effect on the Main Live Balance immediately.",
+                    color = TextSecondary,
+                    fontSize = 13.sp
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+                OutlinedTextField(
+                    value = balanceText,
+                    onValueChange = { balanceText = it },
+                    label = { Text("Starting Funds ($currencySymbol)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = NeonYellow,
+                        unfocusedBorderColor = CardGlassBorder,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val bal = balanceText.toDoubleOrNull() ?: currentBalance
+                    onConfirm(bal)
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = NeonYellow)
+            ) {
+                Text("UPDATE BASELINE", color = CanvasBackground, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("CANCEL", color = TextSecondary)
+            }
+        }
+    )
+}
+
+@Composable
+fun SettingsAndCloudSyncDialog(
+    uiState: FinanceUiState,
+    onDismiss: () -> Unit,
+    onSignInGoogle: () -> Unit,
+    onBackupNow: () -> Unit,
+    onRestoreNow: () -> Unit,
+    onChangePasswords: (tier1: String, tier2: String, onDone: () -> Unit) -> Unit
+) {
+    var newTier1 by remember { mutableStateOf(uiState.tier1Password) }
+    var newTier2 by remember { mutableStateOf(uiState.tier2Password) }
+
+    val lastSyncFormatted = if (uiState.lastSyncTime > 0) {
+        SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date(uiState.lastSyncTime))
+    } else {
+        "Never"
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = SurfaceDark,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Default.CloudSync, contentDescription = null, tint = NeonCyan)
+                Text(text = "Free Google Drive Sync & Security", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                // Google Account Section
+                GlassBox(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(text = "GOOGLE DRIVE BACKUP (FREE)", color = NeonCyan, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = if (uiState.googleAccountEmail != null) {
+                                "Connected: ${uiState.googleAccountEmail}\nLast Backup: $lastSyncFormatted"
+                            } else {
+                                "Link your free personal Google account to auto-backup and restore your financial database across devices."
+                            },
+                            color = TextSecondary,
+                            fontSize = 12.sp
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        if (uiState.googleAccountEmail == null) {
+                            Button(
+                                onClick = onSignInGoogle,
+                                colors = ButtonDefaults.buttonColors(containerColor = NeonCyan),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("LINK GOOGLE ACCOUNT", color = CanvasBackground, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
+                        } else {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                OutlinedButton(
+                                    onClick = onBackupNow,
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Text("BACKUP NOW", fontSize = 11.sp, color = NeonGreen)
+                                }
+                                OutlinedButton(
+                                    onClick = onRestoreNow,
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Text("RESTORE DATA", fontSize = 11.sp, color = NeonCyan)
+                                }
+                            }
+                        }
+
+                        if (uiState.isSyncing) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                CircularProgressIndicator(modifier = Modifier.size(16.dp), color = NeonCyan, strokeWidth = 2.dp)
+                                Text("Sync in progress...", color = NeonCyan, fontSize = 11.sp)
+                            }
+                        }
+                    }
+                }
+
+                // Security Passwords Section
+                GlassBox(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(text = "SECURITY TIER PASSWORDS", color = NeonYellow, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        if (uiState.isAdminModeUnlocked) {
+                            OutlinedTextField(
+                                value = newTier1,
+                                onValueChange = { newTier1 = it },
+                                label = { Text("Tier 1 PIN (Transactions)") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = newTier2,
+                                onValueChange = { newTier2 = it },
+                                label = { Text("Tier 2 Master (Admin Mode)") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(
+                                onClick = {
+                                    onChangePasswords(newTier1, newTier2) {
+                                        onDismiss()
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = NeonYellow),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("SAVE PASSWORDS", color = CanvasBackground, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
+                        } else {
+                            Text(
+                                text = "Unlock Admin Mode (Tier 2) to change Tier 1 PIN or Master Password.",
+                                color = TextMuted,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("CLOSE", color = NeonCyan, fontWeight = FontWeight.Bold)
+            }
+        }
+    )
+}
+
+@Composable
+fun EditTransactionDialog(
+    transaction: TransactionEntity,
+    currencySymbol: String,
+    onDismiss: () -> Unit,
+    onConfirm: (TransactionEntity) -> Unit
+) {
+    var amountText by remember { mutableStateOf(transaction.amount.toString()) }
+    var descText by remember { mutableStateOf(transaction.description) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = SurfaceDark,
+        title = { Text("Admin Override: Edit Transaction", color = NeonCyan, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = amountText,
+                    onValueChange = { amountText = it },
+                    label = { Text("Amount ($currencySymbol)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = descText,
+                    onValueChange = { descText = it },
+                    label = { Text("Description") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val amt = amountText.toDoubleOrNull() ?: transaction.amount
+                    onConfirm(transaction.copy(amount = amt, description = descText))
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = NeonCyan)
+            ) {
+                Text("SAVE", color = CanvasBackground, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
+        }
+    )
+}
+
+@Composable
+fun EditLiabilityDialog(
+    liability: LiabilityEntity,
+    currencySymbol: String,
+    onDismiss: () -> Unit,
+    onConfirm: (LiabilityEntity) -> Unit
+) {
+    var amountText by remember { mutableStateOf(liability.amount.toString()) }
+    var descText by remember { mutableStateOf(liability.description) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = SurfaceDark,
+        title = { Text("Admin Override: Edit Liability", color = NeonCyan, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = amountText,
+                    onValueChange = { amountText = it },
+                    label = { Text("Amount ($currencySymbol)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = descText,
+                    onValueChange = { descText = it },
+                    label = { Text("Description") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val amt = amountText.toDoubleOrNull() ?: liability.amount
+                    onConfirm(liability.copy(amount = amt, description = descText))
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = NeonCyan)
+            ) {
+                Text("SAVE", color = CanvasBackground, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
+        }
+    )
+}
