@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "230629985586",
+    "project_id": "rushu-fin",
+    "storage_bucket": "rushu-fin.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:230629985586:android:f700259da46d9cd7291b2b",
+        "android_client_info": {
+          "package_name": "com.aistudio.rushufin.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "230629985586-ge86jakqtek9cm1j1puau83298inj2fo.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.aistudio.rushufin.app",
+            "certificate_hash": "c267dbcaa4c476044550c58d5cbd51adb1f09c52"
+          }
+        },
+        {
+          "client_id": "230629985586-7dg0ed13v7s45ive0jfh7o5f9peqtsac.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBOz-0XtDqOrXgrhR4sWYK8g2Frmgjdy-A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "230629985586-7dg0ed13v7s45ive0jfh7o5f9peqtsac.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
