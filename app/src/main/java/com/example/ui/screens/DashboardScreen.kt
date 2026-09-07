@@ -138,6 +138,7 @@ fun DashboardScreen(
     val transactions by viewModel.transactions.collectAsStateWithLifecycle()
     val liabilities by viewModel.liabilities.collectAsStateWithLifecycle()
     val isAdminMode by viewModel.isAdminMode.collectAsStateWithLifecycle()
+    val showSyncChoiceDialog by viewModel.showSyncChoiceDialog.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -323,6 +324,15 @@ fun DashboardScreen(
             onChangePasswords = { t1, t2, onDone ->
                 viewModel.updatePasswords(t1, t2, onDone)
             }
+        )
+    }
+
+    if (showSyncChoiceDialog) {
+        SyncChoiceDialog(
+            onMerge = { viewModel.resolveSyncChoiceMerge() },
+            onReplace = { viewModel.resolveSyncChoiceReplaceLocal() },
+            onDiscardCloud = { viewModel.resolveSyncChoiceDiscardCloud() },
+            onDismiss = { viewModel.dismissSyncChoiceDialog() }
         )
     }
 
@@ -1439,6 +1449,82 @@ fun EmptyLedgerCard(message: String) {
 // ----------------------------------------------------
 // Dialogs: Security Tiers, Settings, Cloud Sync, Edits
 // ----------------------------------------------------
+
+@Composable
+fun SyncChoiceDialog(
+    onMerge: () -> Unit,
+    onReplace: () -> Unit,
+    onDiscardCloud: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = SurfaceDark,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Default.CloudSync, contentDescription = null, tint = NeonCyan)
+                Text(text = "Local vs. Cloud Data", color = TextPrimary, fontWeight = FontWeight.Bold)
+            }
+        },
+        text = {
+            Column {
+                Text(
+                    text = "This account may already have cloud data, and this device may have data of its own. How should they be resolved?",
+                    color = TextSecondary,
+                    fontSize = 13.sp
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = onMerge,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = NeonCyan)
+                ) {
+                    Text("MERGE BOTH", color = CanvasBackground, fontWeight = FontWeight.Bold)
+                }
+                Text(
+                    text = "Combine device data with cloud data, skipping exact duplicates.",
+                    color = TextSecondary,
+                    fontSize = 10.sp,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
+                )
+
+                OutlinedButton(
+                    onClick = onReplace,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("REPLACE WITH CLOUD DATA", fontSize = 13.sp)
+                }
+                Text(
+                    text = "Discard this device's data and load the cloud backup instead.",
+                    color = TextSecondary,
+                    fontSize = 10.sp,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
+                )
+
+                OutlinedButton(
+                    onClick = onDiscardCloud,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonRed)
+                ) {
+                    Text("DISCARD CLOUD, KEEP THIS DEVICE", fontSize = 13.sp)
+                }
+                Text(
+                    text = "Overwrite the cloud backup with this device's current data.",
+                    color = TextSecondary,
+                    fontSize = 10.sp,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("DECIDE LATER", color = TextSecondary)
+            }
+        }
+    )
+}
 
 @Composable
 fun AdminUnlockDialog(
