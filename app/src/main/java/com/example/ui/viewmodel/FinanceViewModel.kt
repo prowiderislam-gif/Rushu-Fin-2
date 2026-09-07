@@ -303,14 +303,54 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
     }
 
     // Google Drive Cloud Sync Routines
+    private val _showSyncChoiceDialog = MutableStateFlow(false)
+    val showSyncChoiceDialog: StateFlow<Boolean> = _showSyncChoiceDialog.asStateFlow()
+
     fun onGoogleSignInSuccess(account: GoogleSignInAccount) {
         viewModelScope.launch {
             repository.updateSyncInfo(account.email, System.currentTimeMillis())
             emitFeedback("Google Account linked: ${account.email}")
-            // Pull down any existing cloud backup instead of overwriting it.
-            // If no backup exists yet (first-time link), this will simply report
-            // "No existing backup file found" and the user can tap Backup Now.
-            performCloudRestore()
+            // Don't touch any data yet — ask the user how they want to resolve
+            // local vs. cloud before doing anything.
+            _showSyncChoiceDialog.value = true
+        }
+    }
+
+    fun resolveSyncChoiceMerge() {
+        _showSyncChoiceDialog.value = false
+        performCloudMerge()
+    }
+
+    fun resolveSyncChoiceReplaceLocal() {
+        _showSyncChoiceDialog.value = false
+        performCloudRestore()
+    }
+
+    fun resolveSyncChoiceDiscardCloud() {
+        _showSyncChoiceDialog.value = false
+        performCloudBackup()
+    }
+
+    fun dismissSyncChoiceDialog() {
+        _showSyncChoiceDialog.value = false
+    }
+
+    fun performCloudMerge() {
+        viewModelScope.launch {
+            _isSyncing.value = true
+            _syncMessage.value = "Merging local and cloud data..."
+            val result = driveSyncManager.mergeWithGoogleDrive()
+            _isSyncing.value = false
+            when (result) {
+                is SyncResult.Success -> {
+                    _syncMessage.value = result.message
+                    emitFeedback(result.message)
+                }
+                is SyncResult.Error -> {
+                    _syncMessage.value = result.message
+                    emitFeedback(result.message)
+                }
+            }
         }
     }
 
