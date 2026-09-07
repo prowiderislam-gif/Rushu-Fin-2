@@ -352,6 +352,36 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    fun performSwitchAccount(onReadyForNewSignIn: () -> Unit) {
+        viewModelScope.launch {
+            _isSyncing.value = true
+
+            // 1. Make sure the current account's data is safely backed up first.
+            _syncMessage.value = "Backing up current account before switching..."
+            val backupResult = driveSyncManager.backupToGoogleDrive()
+            if (backupResult is SyncResult.Error) {
+                _isSyncing.value = false
+                _syncMessage.value = backupResult.message
+                emitFeedback("Could not back up current account: ${backupResult.message}")
+                return@launch
+            }
+
+            // 2. Wipe local data so the next account starts on a clean slate
+            // (its own backup, if any, will be pulled down right after sign-in).
+            _syncMessage.value = "Clearing local data for account switch..."
+            repository.clearAllLocalDataForSwitch()
+
+            // 3. Sign out so Google shows the account picker instead of
+            // silently reusing the same account.
+            driveSyncManager.signOut {
+                _isSyncing.value = false
+                _syncMessage.value = "Choose the next Google account to continue."
+                emitFeedback("Signed out. Choose the next Google account.")
+                onReadyForNewSignIn()
+            }
+        }
+    }
+
     fun performClearCloudBackup() {
         viewModelScope.launch {
             _isSyncing.value = true
