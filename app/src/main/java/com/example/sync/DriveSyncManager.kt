@@ -143,6 +143,57 @@ class DriveSyncManager(
         }
     }
 
+    suspend fun mergeWithGoogleDrive(): SyncResult = withContext(Dispatchers.IO) {
+        val account = getCurrentAccount()
+        if (account == null) {
+            return@withContext SyncResult.Error("No Google Account linked. Please sign in first.")
+        }
+
+        val token = getAccessToken()
+        if (token.isNullOrEmpty()) {
+            return@withContext SyncResult.Error("Google authorization missing. Please sign in again.")
+        }
+
+        try {
+            val fileId = findBackupFileId(token)
+            if (fileId == null) {
+                // No cloud backup exists yet — nothing to merge, just push local data up.
+                return@withContext backupToGoogleDrive()
+            }
+
+            val request = Request.Builder()
+                .url("https://www.googleapis.com/drive/v3/files/$fileId?alt=media")
+                .header("Authorization", "Bearer $token")
+                .get()
+                .build()
+
+            val cloudJson = httpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    return@withContext SyncResult.Error("Failed to fetch backup: HTTP ${response.code}")
+                }
+                response.body?.string()
+            }
+
+            if (cloudJson.isNullOrEmpty()) {
+                return@withContext backupToGoogleDrive()
+            }
+
+            val mergedJson = repository.mergeBackupJson(cloudJson)
+            val success = updateDriveFile(token, fileId, mergedJson)
+
+            if (success) {
+                val now = System.currentTimeMillis()
+                repository.updateSyncInfo(account.email, now)
+                SyncResult.Success("Local and cloud data merged successfully — no data lost either way.", now)
+            } else {
+                SyncResult.Error("Merged locally, but re-uploading to Drive failed.")
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            SyncResult.Error("Merge failed: ${e.localizedMessage ?: "Unknown error"}")
+        }
+    }
+
     suspend fun clearCloudBackup(): SyncResult = withContext(Dispatchers.IO) {
         val account = getCurrentAccount()
         if (account == null) {
