@@ -252,6 +252,95 @@ class FinanceRepository(
         financeDao.insertOrUpdateAppState(resetState)
     }
 
+    suspend fun mergeBackupJson(cloudJsonString: String): String = withContext(Dispatchers.IO) {
+        val root = JSONObject(cloudJsonString)
+
+        // --- Merge transactions: match by amount+type+description+date+time to skip duplicates ---
+        val localTx = financeDao.getAllTransactionsSync()
+        val cloudTxList = mutableListOf<TransactionEntity>()
+        if (root.has("transactions")) {
+            val txArray = root.getJSONArray("transactions")
+            for (i in 0 until txArray.length()) {
+                val obj = txArray.getJSONObject(i)
+                cloudTxList.add(
+                    TransactionEntity(
+                        id = 0L,
+                        amount = obj.getDouble("amount"),
+                        type = obj.getString("type"),
+                        description = obj.getString("description"),
+                        dateString = obj.getString("dateString"),
+                        timeString = obj.getString("timeString"),
+                        timestamp = obj.optLong("timestamp", 0L)
+                    )
+                )
+            }
+        }
+        fun txKey(t: TransactionEntity) =
+            "${t.amount}|${t.type}|${t.description.trim().lowercase(Locale.getDefault())}|${t.dateString}|${t.timeString}"
+        val mergedTxMap = LinkedHashMap<String, TransactionEntity>()
+        (cloudTxList + localTx).forEach { tx -> mergedTxMap[txKey(tx)] = tx }
+        val mergedTxList = mergedTxMap.values.sortedBy { it.timestamp }
+
+        // --- Merge liabilities: same matching approach ---
+        val localLiab = financeDao.getAllLiabilitiesSync()
+        val cloudLiabList = mutableListOf<LiabilityEntity>()
+        if (root.has("liabilities")) {
+            val lArray = root.getJSONArray("liabilities")
+            for (i in 0 until lArray.length()) {
+                val obj = lArray.getJSONObject(i)
+                cloudLiabList.add(
+                    LiabilityEntity(
+                        id = 0L,
+                        amount = obj.getDouble("amount"),
+                        actionType = obj.getString("actionType"),
+                        description = obj.getString("description"),
+                        dateString = obj.getString("dateString"),
+                        timeString = obj.getString("timeString"),
+                        timestamp = obj.optLong("timestamp", 0L)
+                    )
+                )
+            }
+        }
+        fun liabKey(l: LiabilityEntity) =
+            "${l.amount}|${l.actionType}|${l.description.trim().lowercase(Locale.getDefault())}|${l.dateString}|${l.timeString}"
+        val mergedLiabMap = LinkedHashMap<String, LiabilityEntity>()
+        (cloudLiabList + localLiab).forEach { l -> mergedLiabMap[liabKey(l)] = l }
+        val mergedLiabList = mergedLiabMap.values.sortedBy { it.timestamp }
+
+        // --- Merge app state: cloud's financial settings win for initialBalance/currency
+        // (that's the account's configured starting point), but device passwords and the
+        // higher of the two peak-liability values are preserved. ---
+        val localState = getOrCreateAppState()
+        val cloudStateObj = if (root.has("appState")) root.getJSONObject("appState") else null
+        val cloudInitial = cloudStateObj?.optDouble("initialBalance", localState.initialBalance) ?: localState.initialBalance
+        val cloudCurrency = cloudStateObj?.optString("currencySymbol", localState.currencySymbol) ?: localState.currencySymbol
+        val cloudPeak = cloudStateObj?.optDouble("peakLiability", 0.0) ?: 0.0
+
+        var computedDebt = 0.0
+        mergedLiabList.forEach {
+            if (it.actionType.equals("ADD_LIABILITY", ignoreCase = true)) computedDebt += it.amount
+            else if (it.actionType.equals("PAY_LIABILITY", ignoreCase = true)) computedDebt -= it.amount
+        }
+        if (computedDebt < 0) computedDebt = 0.0
+        val mergedPeak = maxOf(cloudPeak, localState.peakLiability, computedDebt)
+
+        val mergedState = localState.copy(
+            initialBalance = cloudInitial,
+            currencySymbol = cloudCurrency,
+            peakLiability = mergedPeak
+        )
+
+        // Write the merged result locally
+        financeDao.clearAllTransactions()
+        financeDao.insertAllTransactions(mergedTxList)
+        financeDao.clearAllLiabilities()
+        financeDao.insertAllLiabilities(mergedLiabList)
+        financeDao.insertOrUpdateAppState(mergedState)
+
+        // Return a fresh export of the now-merged local data, ready to re-upload
+        exportBackupJson()
+    }
+
     fun getDatabaseFile(): File {
         return context.getDatabasePath(AppDatabase.DATABASE_NAME)
     }
