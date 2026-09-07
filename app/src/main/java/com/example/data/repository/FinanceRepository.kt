@@ -232,6 +232,26 @@ class FinanceRepository(
         }
     }
 
+    suspend fun clearAllLocalDataForSwitch() = withContext(Dispatchers.IO) {
+        // Keep Tier 1/Tier 2 passwords (device-level security, not tied to any
+        // one Google account), but wipe transactions, liabilities, and reset
+        // the balance/liability/account fields so the new account starts clean.
+        val current = financeDao.getAppStateSync()
+        financeDao.clearAllTransactions()
+        financeDao.clearAllLiabilities()
+        val resetState = AppStateEntity(
+            id = 1,
+            initialBalance = 0.0,
+            tier1Password = current?.tier1Password ?: "1234",
+            tier2Password = current?.tier2Password ?: "9999",
+            currencySymbol = current?.currencySymbol ?: "₹",
+            lastSyncTime = 0L,
+            googleAccountEmail = null,
+            peakLiability = 0.0
+        )
+        financeDao.insertOrUpdateAppState(resetState)
+    }
+
     fun getDatabaseFile(): File {
         return context.getDatabasePath(AppDatabase.DATABASE_NAME)
     }
