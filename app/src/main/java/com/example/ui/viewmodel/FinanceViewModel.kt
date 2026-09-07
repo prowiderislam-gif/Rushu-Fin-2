@@ -307,8 +307,10 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             repository.updateSyncInfo(account.email, System.currentTimeMillis())
             emitFeedback("Google Account linked: ${account.email}")
-            // Trigger automatic sync
-            performCloudBackup()
+            // Pull down any existing cloud backup instead of overwriting it.
+            // If no backup exists yet (first-time link), this will simply report
+            // "No existing backup file found" and the user can tap Backup Now.
+            performCloudRestore()
         }
     }
 
