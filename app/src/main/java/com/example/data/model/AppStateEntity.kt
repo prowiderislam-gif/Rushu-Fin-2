@@ -7,7 +7,7 @@ import androidx.room.PrimaryKey
 data class AppStateEntity(
     @PrimaryKey
     val id: Int = 1,
-    val initialBalance: Double = 100.0,
+    val initialBalance: Double = 0.0,
     val tier1Password: String = "1234",
     val tier2Password: String = "9999",
     val currencySymbol: String = "₹",
