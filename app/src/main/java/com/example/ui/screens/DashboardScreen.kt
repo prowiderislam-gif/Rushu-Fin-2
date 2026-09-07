@@ -314,6 +314,7 @@ fun DashboardScreen(
             },
             onBackupNow = { viewModel.performCloudBackup() },
             onRestoreNow = { viewModel.performCloudRestore() },
+            onClearBackup = { viewModel.performClearCloudBackup() },
             onChangePasswords = { t1, t2, onDone ->
                 viewModel.updatePasswords(t1, t2, onDone)
             }
@@ -1561,10 +1562,12 @@ fun SettingsAndCloudSyncDialog(
     onSignInGoogle: () -> Unit,
     onBackupNow: () -> Unit,
     onRestoreNow: () -> Unit,
+    onClearBackup: () -> Unit,
     onChangePasswords: (tier1: String, tier2: String, onDone: () -> Unit) -> Unit
 ) {
     var newTier1 by remember { mutableStateOf(uiState.tier1Password) }
     var newTier2 by remember { mutableStateOf(uiState.tier2Password) }
+    var confirmClearBackup by remember { mutableStateOf(false) }
 
     val lastSyncFormatted = if (uiState.lastSyncTime > 0) {
         SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date(uiState.lastSyncTime))
@@ -1642,6 +1645,50 @@ fun SettingsAndCloudSyncDialog(
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 CircularProgressIndicator(modifier = Modifier.size(16.dp), color = NeonCyan, strokeWidth = 2.dp)
                                 Text("Sync in progress...", color = NeonCyan, fontSize = 11.sp)
+                            }
+                        }
+
+                        if (uiState.googleAccountEmail != null && uiState.isAdminModeUnlocked) {
+                            Spacer(modifier = Modifier.height(10.dp))
+                            if (!confirmClearBackup) {
+                                OutlinedButton(
+                                    onClick = { confirmClearBackup = true },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonRed)
+                                ) {
+                                    Text("CLEAR CLOUD BACKUP", fontSize = 11.sp)
+                                }
+                            } else {
+                                Text(
+                                    text = "This permanently deletes your Drive backup. Are you sure?",
+                                    color = NeonRed,
+                                    fontSize = 11.sp
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Button(
+                                        onClick = {
+                                            confirmClearBackup = false
+                                            onClearBackup()
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(10.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = NeonRed)
+                                    ) {
+                                        Text("YES, CLEAR", fontSize = 11.sp, color = CanvasBackground, fontWeight = FontWeight.Bold)
+                                    }
+                                    OutlinedButton(
+                                        onClick = { confirmClearBackup = false },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(10.dp)
+                                    ) {
+                                        Text("CANCEL", fontSize = 11.sp)
+                                    }
+                                }
                             }
                         }
                     }
