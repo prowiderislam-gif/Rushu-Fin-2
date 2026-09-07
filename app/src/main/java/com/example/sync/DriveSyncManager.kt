@@ -139,6 +139,41 @@ class DriveSyncManager(
         }
     }
 
+    suspend fun clearCloudBackup(): SyncResult = withContext(Dispatchers.IO) {
+        val account = getCurrentAccount()
+        if (account == null) {
+            return@withContext SyncResult.Error("No Google Account linked. Please sign in first.")
+        }
+
+        val token = getAccessToken()
+        if (token.isNullOrEmpty()) {
+            return@withContext SyncResult.Error("Google authorization missing. Please sign in again.")
+        }
+
+        try {
+            val fileId = findBackupFileId(token)
+                ?: return@withContext SyncResult.Success("No cloud backup found — already clear.")
+
+            val request = Request.Builder()
+                .url("https://www.googleapis.com/drive/v3/files/$fileId")
+                .header("Authorization", "Bearer $token")
+                .delete()
+                .build()
+
+            httpClient.newCall(request).execute().use { response ->
+                if (response.isSuccessful || response.code == 404) {
+                    repository.updateSyncInfo(account.email, 0L)
+                    SyncResult.Success("Cloud backup cleared. Starting fresh.")
+                } else {
+                    SyncResult.Error("Failed to clear backup: HTTP ${response.code}")
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            SyncResult.Error("Clear backup failed: ${e.localizedMessage ?: "Unknown error"}")
+        }
+    }
+
     private fun findBackupFileId(token: String): String? {
         val url = "https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='$backupFileName' and trashed=false&fields=files(id,name,modifiedTime)"
         val request = Request.Builder()
