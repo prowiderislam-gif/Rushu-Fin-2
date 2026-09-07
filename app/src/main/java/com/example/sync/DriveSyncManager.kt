@@ -44,6 +44,10 @@ class DriveSyncManager(
         GoogleSignIn.getClient(context, gso)
     }
 
+    fun signOut(onComplete: () -> Unit) {
+        googleSignInClient.signOut().addOnCompleteListener { onComplete() }
+    }
+
     fun getSignInIntent(): Intent = googleSignInClient.signInIntent
 
     fun getCurrentAccount(): GoogleSignInAccount? {
