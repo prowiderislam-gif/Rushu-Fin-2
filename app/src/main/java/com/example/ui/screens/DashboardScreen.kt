@@ -315,6 +315,11 @@ fun DashboardScreen(
             onBackupNow = { viewModel.performCloudBackup() },
             onRestoreNow = { viewModel.performCloudRestore() },
             onClearBackup = { viewModel.performClearCloudBackup() },
+            onSwitchAccount = {
+                viewModel.performSwitchAccount {
+                    googleSignInLauncher.launch(viewModel.driveSyncManager.getSignInIntent())
+                }
+            },
             onChangePasswords = { t1, t2, onDone ->
                 viewModel.updatePasswords(t1, t2, onDone)
             }
@@ -1563,11 +1568,13 @@ fun SettingsAndCloudSyncDialog(
     onBackupNow: () -> Unit,
     onRestoreNow: () -> Unit,
     onClearBackup: () -> Unit,
+    onSwitchAccount: () -> Unit,
     onChangePasswords: (tier1: String, tier2: String, onDone: () -> Unit) -> Unit
 ) {
     var newTier1 by remember { mutableStateOf(uiState.tier1Password) }
     var newTier2 by remember { mutableStateOf(uiState.tier2Password) }
     var confirmClearBackup by remember { mutableStateOf(false) }
+    var confirmSwitchAccount by remember { mutableStateOf(false) }
 
     val lastSyncFormatted = if (uiState.lastSyncTime > 0) {
         SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date(uiState.lastSyncTime))
@@ -1683,6 +1690,50 @@ fun SettingsAndCloudSyncDialog(
                                     }
                                     OutlinedButton(
                                         onClick = { confirmClearBackup = false },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(10.dp)
+                                    ) {
+                                        Text("CANCEL", fontSize = 11.sp)
+                                    }
+                                }
+                            }
+                        }
+
+                        if (uiState.googleAccountEmail != null) {
+                            Spacer(modifier = Modifier.height(10.dp))
+                            if (!confirmSwitchAccount) {
+                                OutlinedButton(
+                                    onClick = { confirmSwitchAccount = true },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonCyan)
+                                ) {
+                                    Text("SWITCH GOOGLE ACCOUNT", fontSize = 11.sp)
+                                }
+                            } else {
+                                Text(
+                                    text = "This backs up the current account, clears local data, then lets you sign in to a different account. Continue?",
+                                    color = NeonCyan,
+                                    fontSize = 11.sp
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Button(
+                                        onClick = {
+                                            confirmSwitchAccount = false
+                                            onSwitchAccount()
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(10.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = NeonCyan)
+                                    ) {
+                                        Text("YES, SWITCH", fontSize = 11.sp, color = CanvasBackground, fontWeight = FontWeight.Bold)
+                                    }
+                                    OutlinedButton(
+                                        onClick = { confirmSwitchAccount = false },
                                         modifier = Modifier.weight(1f),
                                         shape = RoundedCornerShape(10.dp)
                                     ) {
