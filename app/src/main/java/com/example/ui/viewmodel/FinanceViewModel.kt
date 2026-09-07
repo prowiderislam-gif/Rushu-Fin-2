@@ -350,6 +350,25 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    fun performClearCloudBackup() {
+        viewModelScope.launch {
+            _isSyncing.value = true
+            _syncMessage.value = "Clearing cloud backup..."
+            val result = driveSyncManager.clearCloudBackup()
+            _isSyncing.value = false
+            when (result) {
+                is SyncResult.Success -> {
+                    _syncMessage.value = result.message
+                    emitFeedback(result.message)
+                }
+                is SyncResult.Error -> {
+                    _syncMessage.value = result.message
+                    emitFeedback(result.message)
+                }
+            }
+        }
+    }
+
     private fun triggerAutoSync() {
         // Automatically sync snapshot if Google Account is linked
         if (driveSyncManager.getCurrentAccount() != null) {
