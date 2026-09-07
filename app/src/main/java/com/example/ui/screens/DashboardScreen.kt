@@ -127,6 +127,7 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.example.util.indianNumber
 
 @Composable
 fun DashboardScreen(
@@ -512,7 +513,7 @@ fun MainLiveBalanceCard(
 
             // Calculated Live Net Balance
             Text(
-                text = String.format(Locale.getDefault(), "%s %,.2f", uiState.currencySymbol, uiState.liveBalance),
+                text = "${uiState.currencySymbol} ${indianNumber(uiState.liveBalance)}",
                 style = neonTextStyle(textColor, fontSize = 36.sp, fontWeight = FontWeight.Black, glowRadius = 24f),
                 textAlign = TextAlign.Center
             )
@@ -559,7 +560,7 @@ fun MainLiveBalanceCard(
                     Column {
                         Text(text = "Total Income", color = TextMuted, fontSize = 10.sp)
                         Text(
-                            text = String.format(Locale.getDefault(), "+%s%,.2f", uiState.currencySymbol, uiState.totalIncome),
+                            text = "+${uiState.currencySymbol}${indianNumber(uiState.totalIncome)}",
                             color = NeonGreen,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
@@ -588,7 +589,7 @@ fun MainLiveBalanceCard(
                     Column {
                         Text(text = "Total Expenses", color = TextMuted, fontSize = 10.sp)
                         Text(
-                            text = String.format(Locale.getDefault(), "-%s%,.2f", uiState.currencySymbol, uiState.totalExpense),
+                            text = "-${uiState.currencySymbol}${indianNumber(uiState.totalExpense)}",
                             color = NeonRed,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
@@ -657,7 +658,7 @@ fun SplitBalanceRow(
                 Spacer(modifier = Modifier.height(10.dp))
 
                 Text(
-                    text = String.format(Locale.getDefault(), "%s %,.2f", uiState.currencySymbol, uiState.initialBalance),
+                    text = "${uiState.currencySymbol} ${indianNumber(uiState.initialBalance)}",
                     style = neonTextStyle(NeonYellow, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, glowRadius = 14f)
                 )
 
@@ -713,7 +714,7 @@ fun SplitBalanceRow(
                 Spacer(modifier = Modifier.height(10.dp))
 
                 Text(
-                    text = String.format(Locale.getDefault(), "%s %,.2f", uiState.currencySymbol, uiState.currentLiability),
+                    text = "${uiState.currencySymbol} ${indianNumber(uiState.currentLiability)}",
                     style = neonTextStyle(liabilityText, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, glowRadius = 14f)
                 )
 
@@ -1310,13 +1311,7 @@ fun TransactionItemCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = String.format(
-                        Locale.getDefault(),
-                        "%s%s %,.2f",
-                        if (isIncome) "+" else "-",
-                        currencySymbol,
-                        transaction.amount
-                    ),
+                    text = "${if (isIncome) "+" else "-"}$currencySymbol ${indianNumber(transaction.amount)}",
                     style = neonTextStyle(itemColor, fontSize = 16.sp, fontWeight = FontWeight.Bold, glowRadius = 10f)
                 )
 
@@ -1394,13 +1389,7 @@ fun LiabilityItemCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = String.format(
-                        Locale.getDefault(),
-                        "%s%s %,.2f",
-                        if (isAdd) "+" else "-",
-                        currencySymbol,
-                        liability.amount
-                    ),
+                    text = "${if (isAdd) "+" else "-"}$currencySymbol ${indianNumber(liability.amount)}",
                     style = neonTextStyle(itemColor, fontSize = 16.sp, fontWeight = FontWeight.Bold, glowRadius = 10f)
                 )
 
