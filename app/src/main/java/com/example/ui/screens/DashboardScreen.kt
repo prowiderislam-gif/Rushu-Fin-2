@@ -139,6 +139,7 @@ fun DashboardScreen(
     val liabilities by viewModel.liabilities.collectAsStateWithLifecycle()
     val isAdminMode by viewModel.isAdminMode.collectAsStateWithLifecycle()
     val showSyncChoiceDialog by viewModel.showSyncChoiceDialog.collectAsStateWithLifecycle()
+    val showSetNewPasswordDialog by viewModel.showSetNewPasswordDialog.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -171,6 +172,26 @@ fun DashboardScreen(
     LaunchedEffect(Unit) {
         viewModel.userFeedback.collectLatest { msg ->
             snackbarHostState.showSnackbar(msg)
+        }
+    }
+
+    // Separate launcher for Tier 2 password recovery re-authentication —
+    // kept distinct from the normal link/switch-account launcher so its
+    // result is checked against the already-linked account instead of
+    // triggering the merge/replace/discard choice dialog.
+    val passwordRecoveryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            try {
+                val account = task.result
+                if (account != null) {
+                    viewModel.onPasswordRecoveryReauthSuccess(account)
+                }
+            } catch (e: Exception) {
+                scope.launch { snackbarHostState.showSnackbar("Verification error: ${e.localizedMessage}") }
+            }
         }
     }
 
@@ -289,7 +310,24 @@ fun DashboardScreen(
                 if (viewModel.verifyAndUnlockAdminMode(pin)) {
                     showAdminUnlockDialog = false
                 }
+            },
+            googleAccountLinked = uiState.googleAccountEmail != null,
+            onForgotPassword = {
+                if (uiState.googleAccountEmail != null) {
+                    passwordRecoveryLauncher.launch(viewModel.driveSyncManager.getSignInIntent())
+                } else {
+                    scope.launch {
+                        snackbarHostState.showSnackbar("Link a Google account first (Settings) to enable free password recovery.")
+                    }
+                }
             }
+        )
+    }
+
+    if (showSetNewPasswordDialog) {
+        SetNewTier2PasswordDialog(
+            onDismiss = { viewModel.dismissSetNewPasswordDialog() },
+            onConfirm = { newPassword -> viewModel.setNewTier2PasswordViaRecovery(newPassword) }
         )
     }
 
@@ -1529,7 +1567,9 @@ fun SyncChoiceDialog(
 @Composable
 fun AdminUnlockDialog(
     onDismiss: () -> Unit,
-    onUnlock: (pin: String) -> Unit
+    onUnlock: (pin: String) -> Unit,
+    googleAccountLinked: Boolean,
+    onForgotPassword: () -> Unit
 ) {
     var pinText by remember { mutableStateOf("") }
 
@@ -1569,6 +1609,14 @@ fun AdminUnlockDialog(
                         .fillMaxWidth()
                         .testTag("admin_pin_input")
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+                TextButton(onClick = onForgotPassword) {
+                    Text(
+                        text = if (googleAccountLinked) "Forgot Tier 2 Password? Verify with Google" else "Forgot Tier 2 Password? (Link Google account first)",
+                        color = NeonCyan,
+                        fontSize = 12.sp
+                    )
+                }
             }
         },
         confirmButton = {
@@ -1578,6 +1626,92 @@ fun AdminUnlockDialog(
                 modifier = Modifier.testTag("unlock_admin_confirm_button")
             ) {
                 Text("UNLOCK ADMIN MODE", color = CanvasBackground, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("CANCEL", color = TextSecondary)
+            }
+        }
+    )
+}
+
+@Composable
+fun SetNewTier2PasswordDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (newPassword: String) -> Unit
+) {
+    var newPassword by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    val passwordsMatch = newPassword.isNotBlank() && newPassword == confirmPassword
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = SurfaceDark,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Default.Key, contentDescription = null, tint = NeonCyan)
+                Text(text = "Set New Tier 2 Password", color = TextPrimary, fontWeight = FontWeight.Bold)
+            }
+        },
+        text = {
+            Column {
+                Text(
+                    text = "Your identity was verified via Google. Choose a new Tier 2 (Admin) master password.",
+                    color = TextSecondary,
+                    fontSize = 13.sp
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+                OutlinedTextField(
+                    value = newPassword,
+                    onValueChange = { newPassword = it },
+                    label = { Text("New Master Password") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = NeonCyan,
+                        unfocusedBorderColor = CardGlassBorder,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                        cursorColor = NeonCyan
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = confirmPassword,
+                    onValueChange = { confirmPassword = it },
+                    label = { Text("Confirm New Password") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = NeonCyan,
+                        unfocusedBorderColor = CardGlassBorder,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                        cursorColor = NeonCyan
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (confirmPassword.isNotBlank() && !passwordsMatch) {
+                    Text(
+                        text = "Passwords do not match.",
+                        color = NeonRed,
+                        fontSize = 11.sp,
+                        modifier = Modifier.padding(top = 6.dp)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(newPassword) },
+                enabled = passwordsMatch,
+                colors = ButtonDefaults.buttonColors(containerColor = NeonCyan)
+            ) {
+                Text("SET NEW PASSWORD", color = CanvasBackground, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
