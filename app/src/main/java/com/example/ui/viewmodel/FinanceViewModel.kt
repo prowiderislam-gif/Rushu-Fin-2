@@ -56,10 +56,6 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
     val liabilities: StateFlow<List<LiabilityEntity>> = repository.liabilities
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val availableCategories: StateFlow<List<String>> = transactions
-        .map { list -> list.map { it.category.ifBlank { "Uncategorized" } }.distinct().sorted() }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
     val appState: StateFlow<AppStateEntity?> = repository.appState
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
@@ -177,7 +173,6 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
         amount: Double,
         type: String,
         description: String,
-        category: String,
         tier1Pin: String,
         onSuccess: () -> Unit
     ) {
@@ -195,7 +190,7 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
         }
 
         viewModelScope.launch {
-            repository.addTransaction(amount, type, description, category)
+            repository.addTransaction(amount, type, description)
             emitFeedback("${if (type == "INCOME") "+ive Income" else "-ive Expense"} recorded successfully.")
             onSuccess()
             triggerAutoSync()
@@ -580,23 +575,20 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
     }
 
     /**
-     * Builds a plain-text export grouped by category, with a subtotal for
-     * each selected category, filtered to the given date range.
+     * Builds a plain-text export grouped by keyword, where each "category" is
+     * really just a keyword (e.g. a name like "X", or a word like "Salary")
+     * matched against each transaction's description text — no separate
+     * category field needed. A transaction matching more than one keyword
+     * appears under each keyword it matches.
      */
-    fun buildCategoryExportText(selectedCategories: Set<String>, startTimestamp: Long?, endTimestamp: Long?): String {
+    fun buildKeywordExportText(keywords: List<String>, startTimestamp: Long?, endTimestamp: Long?): String {
         val sym = uiState.value.currencySymbol
-
-        val filtered = transactions.value
+        val allTx = transactions.value
             .filter { tx ->
-                val cat = tx.category.ifBlank { "Uncategorized" }
-                selectedCategories.contains(cat) &&
-                    (startTimestamp == null || tx.timestamp >= startTimestamp) &&
+                (startTimestamp == null || tx.timestamp >= startTimestamp) &&
                     (endTimestamp == null || tx.timestamp <= endTimestamp)
             }
             .sortedBy { it.timestamp }
-
-        val grouped = filtered.groupBy { it.category.ifBlank { "Uncategorized" } }
-            .toSortedMap()
 
         val generatedAt = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date())
         val periodLabel = if (startTimestamp == null && endTimestamp == null) {
@@ -609,50 +601,61 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
         }
 
         val sb = StringBuilder()
-        sb.appendLine("RUSHU FIN - CATEGORY EXPORT")
+        sb.appendLine("RUSHU FIN - KEYWORD EXPORT")
         sb.appendLine("Generated: $generatedAt")
         sb.appendLine("Period: $periodLabel")
-        sb.appendLine("Categories: ${selectedCategories.sorted().joinToString(", ")}")
+        sb.appendLine("Keywords: ${keywords.joinToString(", ")}")
+        sb.appendLine("(A transaction is grouped under a keyword if that word appears anywhere in its description. A transaction matching more than one keyword is listed under each.)")
         sb.appendLine("=".repeat(50))
 
         var grandIncome = 0.0
         var grandExpense = 0.0
+        var anyMatch = false
 
-        if (grouped.isEmpty()) {
-            sb.appendLine()
-            sb.appendLine("(No transactions found for the selected categories/period)")
-        } else {
-            grouped.forEach { (category, txList) ->
-                var catIncome = 0.0
-                var catExpense = 0.0
-                txList.forEach { tx ->
-                    if (tx.type.equals("INCOME", ignoreCase = true)) catIncome += tx.amount
-                    else catExpense += tx.amount
-                }
-                grandIncome += catIncome
-                grandExpense += catExpense
-
+        keywords.forEach { keyword ->
+            val matches = allTx.filter { it.description.contains(keyword, ignoreCase = true) }
+            if (matches.isEmpty()) {
                 sb.appendLine()
-                sb.appendLine("CATEGORY: $category")
+                sb.appendLine("KEYWORD: $keyword")
                 sb.appendLine("-".repeat(50))
-                txList.forEach { tx ->
-                    val sign = if (tx.type.equals("INCOME", ignoreCase = true)) "+" else "-"
-                    sb.appendLine("${tx.dateString} ${tx.timeString}  |  $sign$sym${indianNumber(tx.amount)}  |  ${tx.description}")
-                }
-                sb.appendLine("-".repeat(50))
-                sb.appendLine("Subtotal Income   : +$sym${indianNumber(catIncome)}")
-                sb.appendLine("Subtotal Expenses : -$sym${indianNumber(catExpense)}")
-                sb.appendLine("Subtotal Net      : $sym${indianNumber(catIncome - catExpense)}")
+                sb.appendLine("(No matching transactions)")
+                return@forEach
             }
+            anyMatch = true
+
+            var kwIncome = 0.0
+            var kwExpense = 0.0
+            matches.forEach { tx ->
+                if (tx.type.equals("INCOME", ignoreCase = true)) kwIncome += tx.amount
+                else kwExpense += tx.amount
+            }
+            grandIncome += kwIncome
+            grandExpense += kwExpense
+
+            sb.appendLine()
+            sb.appendLine("KEYWORD: $keyword")
+            sb.appendLine("-".repeat(50))
+            matches.forEach { tx ->
+                val sign = if (tx.type.equals("INCOME", ignoreCase = true)) "+" else "-"
+                sb.appendLine("${tx.dateString} ${tx.timeString}  |  $sign$sym${indianNumber(tx.amount)}  |  ${tx.description}")
+            }
+            sb.appendLine("-".repeat(50))
+            sb.appendLine("Subtotal Income   : +$sym${indianNumber(kwIncome)}")
+            sb.appendLine("Subtotal Expenses : -$sym${indianNumber(kwExpense)}")
+            sb.appendLine("Subtotal Net      : $sym${indianNumber(kwIncome - kwExpense)}")
         }
 
         sb.appendLine()
         sb.appendLine("=".repeat(50))
-        sb.appendLine("GRAND TOTAL (Selected Categories)")
+        sb.appendLine("COMBINED TOTAL (Sum of matched keyword groups above — overlapping matches, if any, are counted once per group they appear in)")
         sb.appendLine("=".repeat(50))
-        sb.appendLine("Total Income      : +$sym${indianNumber(grandIncome)}")
-        sb.appendLine("Total Expenses    : -$sym${indianNumber(grandExpense)}")
-        sb.appendLine("Net               : $sym${indianNumber(grandIncome - grandExpense)}")
+        if (!anyMatch) {
+            sb.appendLine("(No transactions matched any of the given keywords)")
+        } else {
+            sb.appendLine("Total Income      : +$sym${indianNumber(grandIncome)}")
+            sb.appendLine("Total Expenses    : -$sym${indianNumber(grandExpense)}")
+            sb.appendLine("Net               : $sym${indianNumber(grandIncome - grandExpense)}")
+        }
         sb.appendLine()
         sb.appendLine("-".repeat(50))
         sb.appendLine("Exported from RUSHU FIN - Personal Finance & Liability Tracking")
