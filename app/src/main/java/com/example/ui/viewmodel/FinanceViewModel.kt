@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -53,6 +54,10 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val liabilities: StateFlow<List<LiabilityEntity>> = repository.liabilities
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val availableCategories: StateFlow<List<String>> = transactions
+        .map { list -> list.map { it.category.ifBlank { "Uncategorized" } }.distinct().sorted() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val appState: StateFlow<AppStateEntity?> = repository.appState
@@ -172,6 +177,7 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
         amount: Double,
         type: String,
         description: String,
+        category: String,
         tier1Pin: String,
         onSuccess: () -> Unit
     ) {
@@ -189,7 +195,7 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
         }
 
         viewModelScope.launch {
-            repository.addTransaction(amount, type, description)
+            repository.addTransaction(amount, type, description, category)
             emitFeedback("${if (type == "INCOME") "+ive Income" else "-ive Expense"} recorded successfully.")
             onSuccess()
             triggerAutoSync()
@@ -566,6 +572,87 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
             }
         }
 
+        sb.appendLine()
+        sb.appendLine("-".repeat(50))
+        sb.appendLine("Exported from RUSHU FIN - Personal Finance & Liability Tracking")
+
+        return sb.toString()
+    }
+
+    /**
+     * Builds a plain-text export grouped by category, with a subtotal for
+     * each selected category, filtered to the given date range.
+     */
+    fun buildCategoryExportText(selectedCategories: Set<String>, startTimestamp: Long?, endTimestamp: Long?): String {
+        val sym = uiState.value.currencySymbol
+
+        val filtered = transactions.value
+            .filter { tx ->
+                val cat = tx.category.ifBlank { "Uncategorized" }
+                selectedCategories.contains(cat) &&
+                    (startTimestamp == null || tx.timestamp >= startTimestamp) &&
+                    (endTimestamp == null || tx.timestamp <= endTimestamp)
+            }
+            .sortedBy { it.timestamp }
+
+        val grouped = filtered.groupBy { it.category.ifBlank { "Uncategorized" } }
+            .toSortedMap()
+
+        val generatedAt = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date())
+        val periodLabel = if (startTimestamp == null && endTimestamp == null) {
+            "All Time"
+        } else {
+            val sdf = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+            val startLabel = startTimestamp?.let { sdf.format(Date(it)) } ?: "Beginning"
+            val endLabel = endTimestamp?.let { sdf.format(Date(it)) } ?: "Now"
+            "$startLabel  to  $endLabel"
+        }
+
+        val sb = StringBuilder()
+        sb.appendLine("RUSHU FIN - CATEGORY EXPORT")
+        sb.appendLine("Generated: $generatedAt")
+        sb.appendLine("Period: $periodLabel")
+        sb.appendLine("Categories: ${selectedCategories.sorted().joinToString(", ")}")
+        sb.appendLine("=".repeat(50))
+
+        var grandIncome = 0.0
+        var grandExpense = 0.0
+
+        if (grouped.isEmpty()) {
+            sb.appendLine()
+            sb.appendLine("(No transactions found for the selected categories/period)")
+        } else {
+            grouped.forEach { (category, txList) ->
+                var catIncome = 0.0
+                var catExpense = 0.0
+                txList.forEach { tx ->
+                    if (tx.type.equals("INCOME", ignoreCase = true)) catIncome += tx.amount
+                    else catExpense += tx.amount
+                }
+                grandIncome += catIncome
+                grandExpense += catExpense
+
+                sb.appendLine()
+                sb.appendLine("CATEGORY: $category")
+                sb.appendLine("-".repeat(50))
+                txList.forEach { tx ->
+                    val sign = if (tx.type.equals("INCOME", ignoreCase = true)) "+" else "-"
+                    sb.appendLine("${tx.dateString} ${tx.timeString}  |  $sign$sym${indianNumber(tx.amount)}  |  ${tx.description}")
+                }
+                sb.appendLine("-".repeat(50))
+                sb.appendLine("Subtotal Income   : +$sym${indianNumber(catIncome)}")
+                sb.appendLine("Subtotal Expenses : -$sym${indianNumber(catExpense)}")
+                sb.appendLine("Subtotal Net      : $sym${indianNumber(catIncome - catExpense)}")
+            }
+        }
+
+        sb.appendLine()
+        sb.appendLine("=".repeat(50))
+        sb.appendLine("GRAND TOTAL (Selected Categories)")
+        sb.appendLine("=".repeat(50))
+        sb.appendLine("Total Income      : +$sym${indianNumber(grandIncome)}")
+        sb.appendLine("Total Expenses    : -$sym${indianNumber(grandExpense)}")
+        sb.appendLine("Net               : $sym${indianNumber(grandIncome - grandExpense)}")
         sb.appendLine()
         sb.appendLine("-".repeat(50))
         sb.appendLine("Exported from RUSHU FIN - Personal Finance & Liability Tracking")
