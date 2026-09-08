@@ -21,6 +21,9 @@ interface FinanceDao {
     @Query("SELECT * FROM transactions ORDER BY timestamp DESC")
     suspend fun getAllTransactionsSync(): List<TransactionEntity>
 
+    @Query("SELECT DISTINCT category FROM transactions ORDER BY category ASC")
+    suspend fun getDistinctCategoriesSync(): List<String>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTransaction(transaction: TransactionEntity): Long
 
