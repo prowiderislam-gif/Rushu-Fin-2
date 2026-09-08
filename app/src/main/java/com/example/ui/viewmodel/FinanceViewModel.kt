@@ -28,10 +28,10 @@ import java.util.Date
 import java.util.Locale
 
 data class FinanceUiState(
-    val initialBalance: Double = 100.0,
+    val initialBalance: Double = 0.0,
     val totalIncome: Double = 0.0,
     val totalExpense: Double = 0.0,
-    val liveBalance: Double = 100.0, // Calculated strictly: initialBalance + totalIncome - totalExpense
+    val liveBalance: Double = 0.0, // Calculated strictly: initialBalance + totalIncome - totalExpense
     val currentLiability: Double = 0.0, // Sum(ADD_LIABILITY) - Sum(PAY_LIABILITY), strictly separate
     val peakLiability: Double = 0.0,
     val currencySymbol: String = "₹",
@@ -41,7 +41,8 @@ data class FinanceUiState(
     val lastSyncTime: Long = 0L,
     val googleAccountEmail: String? = null,
     val isSyncing: Boolean = false,
-    val syncMessage: String? = null
+    val syncMessage: String? = null,
+    val showLiabilities: Boolean = true
 )
 
 class FinanceViewModel(application: Application) : AndroidViewModel(application) {
@@ -83,12 +84,13 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
         dbDataFlow,
         uiFlagsFlow
     ) { (state, txList, liabilityList), (isAdmin, syncing, message) ->
-        val initial = state?.initialBalance ?: 100.0
+        val initial = state?.initialBalance ?: 0.0
         val tier1 = state?.tier1Password ?: "1234"
         val tier2 = state?.tier2Password ?: "9999"
         val currency = state?.currencySymbol ?: "₹"
         val syncTime = state?.lastSyncTime ?: 0L
         val email = state?.googleAccountEmail ?: driveSyncManager.getCurrentAccount()?.email
+        val showLiab = state?.showLiabilities ?: true
 
         var incomeSum = 0.0
         var expenseSum = 0.0
@@ -131,7 +133,8 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
             lastSyncTime = syncTime,
             googleAccountEmail = email,
             isSyncing = syncing,
-            syncMessage = message
+            syncMessage = message,
+            showLiabilities = showLiab
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), FinanceUiState())
 
@@ -661,6 +664,14 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
         sb.appendLine("Exported from RUSHU FIN - Personal Finance & Liability Tracking")
 
         return sb.toString()
+    }
+
+    fun setShowLiabilities(show: Boolean) {
+        viewModelScope.launch {
+            repository.updateShowLiabilities(show)
+            emitFeedback(if (show) "Liability section shown." else "Liability section hidden.")
+            triggerAutoSync()
+        }
     }
 
     fun emitFeedback(msg: String) {
