@@ -38,17 +38,22 @@ class FinanceRepository(
         }
     }
 
-    suspend fun addTransaction(amount: Double, type: String, description: String): Long = withContext(Dispatchers.IO) {
+    suspend fun addTransaction(amount: Double, type: String, description: String, category: String = "Uncategorized"): Long = withContext(Dispatchers.IO) {
         val now = Date()
         val tx = TransactionEntity(
             amount = amount,
             type = type.uppercase(Locale.getDefault()),
             description = description.trim(),
+            category = category.trim().ifBlank { "Uncategorized" },
             dateString = dateFormat.format(now),
             timeString = timeFormat.format(now),
             timestamp = now.time
         )
         financeDao.insertTransaction(tx)
+    }
+
+    suspend fun getDistinctCategories(): List<String> = withContext(Dispatchers.IO) {
+        financeDao.getDistinctCategoriesSync()
     }
 
     suspend fun updateTransaction(transaction: TransactionEntity) = withContext(Dispatchers.IO) {
@@ -142,6 +147,7 @@ class FinanceRepository(
             obj.put("amount", tx.amount)
             obj.put("type", tx.type)
             obj.put("description", tx.description)
+            obj.put("category", tx.category)
             obj.put("dateString", tx.dateString)
             obj.put("timeString", tx.timeString)
             obj.put("timestamp", tx.timestamp)
@@ -195,6 +201,7 @@ class FinanceRepository(
                             amount = obj.getDouble("amount"),
                             type = obj.getString("type"),
                             description = obj.getString("description"),
+                            category = obj.optString("category", "Uncategorized"),
                             dateString = obj.getString("dateString"),
                             timeString = obj.getString("timeString"),
                             timestamp = obj.optLong("timestamp", System.currentTimeMillis())
@@ -268,6 +275,7 @@ class FinanceRepository(
                         amount = obj.getDouble("amount"),
                         type = obj.getString("type"),
                         description = obj.getString("description"),
+                        category = obj.optString("category", "Uncategorized"),
                         dateString = obj.getString("dateString"),
                         timeString = obj.getString("timeString"),
                         timestamp = obj.optLong("timestamp", 0L)
