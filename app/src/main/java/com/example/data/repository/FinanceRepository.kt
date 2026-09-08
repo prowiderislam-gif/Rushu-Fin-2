@@ -111,6 +111,11 @@ class FinanceRepository(
         financeDao.insertOrUpdateAppState(current.copy(tier1Password = tier1, tier2Password = tier2))
     }
 
+    suspend fun updateShowLiabilities(show: Boolean) = withContext(Dispatchers.IO) {
+        val current = getOrCreateAppState()
+        financeDao.insertOrUpdateAppState(current.copy(showLiabilities = show))
+    }
+
     suspend fun updateSyncInfo(email: String?, syncTime: Long) = withContext(Dispatchers.IO) {
         val current = getOrCreateAppState()
         financeDao.insertOrUpdateAppState(current.copy(googleAccountEmail = email, lastSyncTime = syncTime))
@@ -136,6 +141,7 @@ class FinanceRepository(
         stateObj.put("tier2Password", state.tier2Password)
         stateObj.put("currencySymbol", state.currencySymbol)
         stateObj.put("peakLiability", state.peakLiability)
+        stateObj.put("showLiabilities", state.showLiabilities)
         stateObj.put("googleAccountEmail", state.googleAccountEmail ?: "")
         stateObj.put("lastSyncTime", state.lastSyncTime)
         root.put("appState", stateObj)
@@ -179,13 +185,14 @@ class FinanceRepository(
                 val stateObj = root.getJSONObject("appState")
                 val restoredState = AppStateEntity(
                     id = 1,
-                    initialBalance = stateObj.optDouble("initialBalance", 100.0),
+                    initialBalance = stateObj.optDouble("initialBalance", 0.0),
                     tier1Password = stateObj.optString("tier1Password", "1234"),
                     tier2Password = stateObj.optString("tier2Password", "9999"),
                     currencySymbol = stateObj.optString("currencySymbol", "₹"),
                     lastSyncTime = stateObj.optLong("lastSyncTime", System.currentTimeMillis()),
                     googleAccountEmail = stateObj.optString("googleAccountEmail", "").takeIf { it.isNotEmpty() },
-                    peakLiability = stateObj.optDouble("peakLiability", 0.0)
+                    peakLiability = stateObj.optDouble("peakLiability", 0.0),
+                    showLiabilities = stateObj.optBoolean("showLiabilities", true)
                 )
                 financeDao.insertOrUpdateAppState(restoredState)
             }
