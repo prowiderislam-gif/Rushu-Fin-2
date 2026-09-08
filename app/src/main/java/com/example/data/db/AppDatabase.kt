@@ -13,7 +13,7 @@ import com.example.data.model.TransactionEntity
 
 @Database(
     entities = [TransactionEntity::class, LiabilityEntity::class, AppStateEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -34,6 +34,14 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Adds the "showLiabilities" toggle column, defaulting to visible (1)
+        // so existing installs keep seeing liabilities unless they turn it off.
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE app_state ADD COLUMN showLiabilities INTEGER NOT NULL DEFAULT 1")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -41,7 +49,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     DATABASE_NAME
                 )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
