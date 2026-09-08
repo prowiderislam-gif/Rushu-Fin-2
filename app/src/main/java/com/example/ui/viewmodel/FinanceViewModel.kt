@@ -10,6 +10,7 @@ import com.example.data.model.TransactionEntity
 import com.example.data.repository.FinanceRepository
 import com.example.sync.DriveSyncManager
 import com.example.sync.SyncResult
+import com.example.util.indianNumber
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +22,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 data class FinanceUiState(
     val initialBalance: Double = 100.0,
@@ -479,6 +483,94 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
                 driveSyncManager.backupToGoogleDrive()
             }
         }
+    }
+
+    /**
+     * Builds a plain-text export of transactions (and optionally liabilities),
+     * filtered to [startTimestamp]..[endTimestamp] (either can be null to mean
+     * "no lower/upper bound", so both null = all time).
+     */
+    fun buildExportText(startTimestamp: Long?, endTimestamp: Long?, includeLiabilities: Boolean): String {
+        val state = uiState.value
+        val sym = state.currencySymbol
+
+        val txList = transactions.value
+            .filter { tx ->
+                (startTimestamp == null || tx.timestamp >= startTimestamp) &&
+                    (endTimestamp == null || tx.timestamp <= endTimestamp)
+            }
+            .sortedBy { it.timestamp }
+
+        val liabList = if (includeLiabilities) {
+            liabilities.value
+                .filter { l ->
+                    (startTimestamp == null || l.timestamp >= startTimestamp) &&
+                        (endTimestamp == null || l.timestamp <= endTimestamp)
+                }
+                .sortedBy { it.timestamp }
+        } else emptyList()
+
+        val generatedAt = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date())
+        val periodLabel = if (startTimestamp == null && endTimestamp == null) {
+            "All Time"
+        } else {
+            val sdf = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+            val startLabel = startTimestamp?.let { sdf.format(Date(it)) } ?: "Beginning"
+            val endLabel = endTimestamp?.let { sdf.format(Date(it)) } ?: "Now"
+            "$startLabel  to  $endLabel"
+        }
+
+        val sb = StringBuilder()
+        sb.appendLine("RUSHU FIN - TRANSACTION EXPORT")
+        sb.appendLine("Generated: $generatedAt")
+        sb.appendLine("Period: $periodLabel")
+        sb.appendLine("=".repeat(50))
+        sb.appendLine()
+        sb.appendLine("SUMMARY")
+        sb.appendLine("-".repeat(50))
+        sb.appendLine("Initial Balance   : $sym ${indianNumber(state.initialBalance)}")
+        sb.appendLine("Live Balance      : $sym ${indianNumber(state.liveBalance)}")
+        sb.appendLine("Total Income      : +$sym${indianNumber(state.totalIncome)}")
+        sb.appendLine("Total Expenses    : -$sym${indianNumber(state.totalExpense)}")
+        if (includeLiabilities) {
+            sb.appendLine("Current Liability : $sym ${indianNumber(state.currentLiability)}")
+        }
+        sb.appendLine()
+
+        sb.appendLine("=".repeat(50))
+        sb.appendLine("MAIN LEDGER (INCOME / EXPENSE)")
+        sb.appendLine("=".repeat(50))
+        if (txList.isEmpty()) {
+            sb.appendLine("(No transactions in this period)")
+        } else {
+            txList.forEach { tx ->
+                val sign = if (tx.type.equals("INCOME", ignoreCase = true)) "+" else "-"
+                sb.appendLine("${tx.dateString} ${tx.timeString}  |  $sign$sym${indianNumber(tx.amount)}  |  ${tx.description}")
+            }
+        }
+
+        if (includeLiabilities) {
+            sb.appendLine()
+            sb.appendLine("=".repeat(50))
+            sb.appendLine("LIABILITY LEDGER")
+            sb.appendLine("=".repeat(50))
+            if (liabList.isEmpty()) {
+                sb.appendLine("(No liability records in this period)")
+            } else {
+                liabList.forEach { l ->
+                    val isAdd = l.actionType.equals("ADD_LIABILITY", ignoreCase = true)
+                    val sign = if (isAdd) "+" else "-"
+                    val label = if (isAdd) "New Liability" else "Payment"
+                    sb.appendLine("${l.dateString} ${l.timeString}  |  $sign$sym${indianNumber(l.amount)}  |  $label: ${l.description}")
+                }
+            }
+        }
+
+        sb.appendLine()
+        sb.appendLine("-".repeat(50))
+        sb.appendLine("Exported from RUSHU FIN - Personal Finance & Liability Tracking")
+
+        return sb.toString()
     }
 
     fun emitFeedback(msg: String) {
