@@ -23,6 +23,9 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -57,6 +60,8 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -85,6 +90,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -156,6 +162,8 @@ fun DashboardScreen(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var showExportDialog by remember { mutableStateOf(false) }
+    var showCategoryExportDialog by remember { mutableStateOf(false) }
+    val availableCategories by viewModel.availableCategories.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
 
     // Dialog States
@@ -272,8 +280,8 @@ fun DashboardScreen(
             item {
                 NormalTransactionModule(
                     currencySymbol = uiState.currencySymbol,
-                    onRecordTransaction = { amount, type, desc, pin, onDone ->
-                        viewModel.addTransaction(amount, type, desc, pin, onDone)
+                    onRecordTransaction = { amount, type, desc, category, pin, onDone ->
+                        viewModel.addTransaction(amount, type, desc, category, pin, onDone)
                     }
                 )
             }
@@ -378,6 +386,10 @@ fun DashboardScreen(
             onExportTransactions = {
                 showSettingsDialog = false
                 showExportDialog = true
+            },
+            onExportByCategory = {
+                showSettingsDialog = false
+                showCategoryExportDialog = true
             }
         )
     }
@@ -412,6 +424,37 @@ fun DashboardScreen(
                                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                             }
                             context.startActivity(Intent.createChooser(shareIntent, "Share transaction export"))
+                        }
+                    } else {
+                        snackbarHostState.showSnackbar("Export failed. Please try again.")
+                    }
+                }
+            }
+        )
+    }
+
+    if (showCategoryExportDialog) {
+        CategoryExportDialog(
+            availableCategories = availableCategories,
+            onDismiss = { showCategoryExportDialog = false },
+            onExport = { selectedCategories, startTimestamp, endTimestamp ->
+                val exportText = viewModel.buildCategoryExportText(selectedCategories, startTimestamp, endTimestamp)
+                val fileName = "RushuFin_CategoryExport_${System.currentTimeMillis()}.txt"
+                val uri = FileExportUtil.saveTextToDownloads(context, fileName, exportText)
+                showCategoryExportDialog = false
+                scope.launch {
+                    if (uri != null) {
+                        val result = snackbarHostState.showSnackbar(
+                            message = "Saved to Downloads/$fileName",
+                            actionLabel = "SHARE"
+                        )
+                        if (result == SnackbarResult.ActionPerformed) {
+                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_STREAM, uri)
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            context.startActivity(Intent.createChooser(shareIntent, "Share category export"))
                         }
                     } else {
                         snackbarHostState.showSnackbar("Export failed. Please try again.")
@@ -840,12 +883,13 @@ fun SplitBalanceRow(
 @Composable
 fun NormalTransactionModule(
     currencySymbol: String,
-    onRecordTransaction: (amount: Double, type: String, description: String, pin: String, onDone: () -> Unit) -> Unit,
+    onRecordTransaction: (amount: Double, type: String, description: String, category: String, pin: String, onDone: () -> Unit) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var selectedType by remember { mutableStateOf("INCOME") } // "INCOME" or "EXPENSE"
     var amountText by remember { mutableStateOf("") }
     var descriptionText by remember { mutableStateOf("") }
+    var categoryText by remember { mutableStateOf("") }
     var tier1PinText by remember { mutableStateOf("") }
 
     val isIncome = selectedType == "INCOME"
@@ -969,6 +1013,28 @@ fun NormalTransactionModule(
 
             Spacer(modifier = Modifier.height(10.dp))
 
+            // Category Input (optional — defaults to Uncategorized)
+            OutlinedTextField(
+                value = categoryText,
+                onValueChange = { categoryText = it },
+                label = { Text("Category (optional)") },
+                placeholder = { Text(if (isIncome) "e.g. Salary, Freelance" else "e.g. Food, Rent, Travel") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Next),
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = accentColor,
+                    unfocusedBorderColor = CardGlassBorder,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary,
+                    cursorColor = accentColor
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("transaction_category_input")
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
             // Tier 1 PIN Input
             OutlinedTextField(
                 value = tier1PinText,
@@ -999,9 +1065,11 @@ fun NormalTransactionModule(
             Button(
                 onClick = {
                     val amt = amountText.toDoubleOrNull() ?: 0.0
-                    onRecordTransaction(amt, selectedType, descriptionText, tier1PinText) {
+                    val cat = categoryText.trim().ifBlank { "Uncategorized" }
+                    onRecordTransaction(amt, selectedType, descriptionText, cat, tier1PinText) {
                         amountText = ""
                         descriptionText = ""
+                        categoryText = ""
                         tier1PinText = ""
                     }
                 },
@@ -1761,6 +1829,184 @@ fun ExportTransactionsDialog(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CategoryExportDialog(
+    availableCategories: List<String>,
+    onDismiss: () -> Unit,
+    onExport: (selectedCategories: Set<String>, startTimestamp: Long?, endTimestamp: Long?) -> Unit
+) {
+    val selected = remember { mutableStateListOf<String>() }
+    var exportFromBeginning by remember { mutableStateOf(true) }
+    var startDateMillis by remember { mutableStateOf<Long?>(null) }
+    var endDateMillis by remember { mutableStateOf<Long?>(null) }
+    var showStartPicker by remember { mutableStateOf(false) }
+    var showEndPicker by remember { mutableStateOf(false) }
+
+    val dateLabelFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = SurfaceDark,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Default.Download, contentDescription = null, tint = NeonCyan)
+                Text(text = "Export by Category", color = TextPrimary, fontWeight = FontWeight.Bold)
+            }
+        },
+        text = {
+            Column {
+                if (availableCategories.isEmpty()) {
+                    Text(
+                        text = "No categories found yet. Add a category when recording a transaction, then come back here.",
+                        color = TextSecondary,
+                        fontSize = 12.sp
+                    )
+                } else {
+                    Text(
+                        text = "Select one or more categories:",
+                        color = TextSecondary,
+                        fontSize = 12.sp
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 180.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        availableCategories.forEach { category ->
+                            val isChecked = selected.contains(category)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        if (isChecked) selected.remove(category) else selected.add(category)
+                                    },
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = isChecked,
+                                    onCheckedChange = {
+                                        if (it) selected.add(category) else selected.remove(category)
+                                    },
+                                    colors = CheckboxDefaults.colors(checkedColor = NeonCyan)
+                                )
+                                Text(category, color = TextPrimary, fontSize = 13.sp)
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+                    HorizontalDivider(color = CardGlassBorder)
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Export From The Very Beginning", color = TextPrimary, fontSize = 13.sp)
+                        Switch(
+                            checked = exportFromBeginning,
+                            onCheckedChange = { exportFromBeginning = it },
+                            colors = SwitchDefaults.colors(checkedTrackColor = NeonCyan)
+                        )
+                    }
+
+                    if (!exportFromBeginning) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = "Choose a custom date range:",
+                            color = TextSecondary,
+                            fontSize = 12.sp
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = { showStartPicker = true },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = startDateMillis?.let { dateLabelFormat.format(Date(it)) } ?: "Start Date",
+                                    fontSize = 11.sp
+                                )
+                            }
+                            OutlinedButton(
+                                onClick = { showEndPicker = true },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = endDateMillis?.let { dateLabelFormat.format(Date(it)) } ?: "End Date",
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val start = if (exportFromBeginning) null else startDateMillis
+                    val end = if (exportFromBeginning) null else endDateMillis
+                    onExport(selected.toSet(), start, end)
+                },
+                enabled = selected.isNotEmpty(),
+                colors = ButtonDefaults.buttonColors(containerColor = NeonCyan)
+            ) {
+                Text("EXPORT", color = CanvasBackground, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("CANCEL", color = TextSecondary)
+            }
+        }
+    )
+
+    if (showStartPicker) {
+        val state = rememberDatePickerState(initialSelectedDateMillis = startDateMillis)
+        DatePickerDialog(
+            onDismissRequest = { showStartPicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    startDateMillis = state.selectedDateMillis
+                    showStartPicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showStartPicker = false }) { Text("CANCEL") }
+            }
+        ) {
+            DatePicker(state = state)
+        }
+    }
+
+    if (showEndPicker) {
+        val state = rememberDatePickerState(initialSelectedDateMillis = endDateMillis)
+        DatePickerDialog(
+            onDismissRequest = { showEndPicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    val millis = state.selectedDateMillis
+                    endDateMillis = millis?.plus(23 * 60 * 60 * 1000L + 59 * 60 * 1000L + 59 * 1000L)
+                    showEndPicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEndPicker = false }) { Text("CANCEL") }
+            }
+        ) {
+            DatePicker(state = state)
+        }
+    }
+}
+
 @Composable
 fun AdminUnlockDialog(
     onDismiss: () -> Unit,
@@ -1987,6 +2233,7 @@ fun SettingsAndCloudSyncDialog(
     onClearBackup: () -> Unit,
     onSwitchAccount: () -> Unit,
     onExportTransactions: () -> Unit,
+    onExportByCategory: () -> Unit,
     onChangePasswords: (tier1: String, tier2: String, onDone: () -> Unit) -> Unit
 ) {
     var newTier1 by remember { mutableStateOf(uiState.tier1Password) }
@@ -2119,234 +2366,3 @@ fun SettingsAndCloudSyncDialog(
 
                         if (uiState.googleAccountEmail != null) {
                             Spacer(modifier = Modifier.height(10.dp))
-                            if (!confirmSwitchAccount) {
-                                OutlinedButton(
-                                    onClick = { confirmSwitchAccount = true },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(10.dp),
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonCyan)
-                                ) {
-                                    Text("SWITCH GOOGLE ACCOUNT", fontSize = 11.sp)
-                                }
-                            } else {
-                                Text(
-                                    text = "This backs up the current account, clears local data, then lets you sign in to a different account. Continue?",
-                                    color = NeonCyan,
-                                    fontSize = 11.sp
-                                )
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Button(
-                                        onClick = {
-                                            confirmSwitchAccount = false
-                                            onSwitchAccount()
-                                        },
-                                        modifier = Modifier.weight(1f),
-                                        shape = RoundedCornerShape(10.dp),
-                                        colors = ButtonDefaults.buttonColors(containerColor = NeonCyan)
-                                    ) {
-                                        Text("YES, SWITCH", fontSize = 11.sp, color = CanvasBackground, fontWeight = FontWeight.Bold)
-                                    }
-                                    OutlinedButton(
-                                        onClick = { confirmSwitchAccount = false },
-                                        modifier = Modifier.weight(1f),
-                                        shape = RoundedCornerShape(10.dp)
-                                    ) {
-                                        Text("CANCEL", fontSize = 11.sp)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // Export Transactions Section
-                GlassBox(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp)
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(text = "EXPORT TRANSACTIONS", color = NeonCyan, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = "Save your ledger as a text file you can open or share.",
-                            color = TextSecondary,
-                            fontSize = 11.sp
-                        )
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Button(
-                            onClick = onExportTransactions,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = NeonCyan)
-                        ) {
-                            Icon(Icons.Default.Download, contentDescription = null, tint = CanvasBackground, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("EXPORT AS TEXT FILE", fontSize = 12.sp, color = CanvasBackground, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // Security Passwords Section
-                GlassBox(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp)
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(text = "SECURITY TIER PASSWORDS", color = NeonYellow, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        if (uiState.isAdminModeUnlocked) {
-                            OutlinedTextField(
-                                value = newTier1,
-                                onValueChange = { newTier1 = it },
-                                label = { Text("Tier 1 PIN (Transactions)") },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            OutlinedTextField(
-                                value = newTier2,
-                                onValueChange = { newTier2 = it },
-                                label = { Text("Tier 2 Master (Admin Mode)") },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Button(
-                                onClick = {
-                                    onChangePasswords(newTier1, newTier2) {
-                                        onDismiss()
-                                    }
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = NeonYellow),
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("SAVE PASSWORDS", color = CanvasBackground, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                            }
-                        } else {
-                            Text(
-                                text = "Unlock Admin Mode (Tier 2) to change Tier 1 PIN or Master Password.",
-                                color = TextMuted,
-                                fontSize = 12.sp
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("CLOSE", color = NeonCyan, fontWeight = FontWeight.Bold)
-            }
-        }
-    )
-}
-
-@Composable
-fun EditTransactionDialog(
-    transaction: TransactionEntity,
-    currencySymbol: String,
-    onDismiss: () -> Unit,
-    onConfirm: (TransactionEntity) -> Unit
-) {
-    var amountText by remember { mutableStateOf(transaction.amount.toString()) }
-    var descText by remember { mutableStateOf(transaction.description) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = SurfaceDark,
-        title = { Text("Admin Override: Edit Transaction", color = NeonCyan, fontWeight = FontWeight.Bold) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(
-                    value = amountText,
-                    onValueChange = { amountText = it },
-                    label = { Text("Amount ($currencySymbol)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = descText,
-                    onValueChange = { descText = it },
-                    label = { Text("Description") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    val amt = amountText.toDoubleOrNull() ?: transaction.amount
-                    onConfirm(transaction.copy(amount = amt, description = descText))
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = NeonCyan)
-            ) {
-                Text("SAVE", color = CanvasBackground, fontWeight = FontWeight.Bold)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
-        }
-    )
-}
-
-@Composable
-fun EditLiabilityDialog(
-    liability: LiabilityEntity,
-    currencySymbol: String,
-    onDismiss: () -> Unit,
-    onConfirm: (LiabilityEntity) -> Unit
-) {
-    var amountText by remember { mutableStateOf(liability.amount.toString()) }
-    var descText by remember { mutableStateOf(liability.description) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = SurfaceDark,
-        title = { Text("Admin Override: Edit Liability", color = NeonCyan, fontWeight = FontWeight.Bold) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(
-                    value = amountText,
-                    onValueChange = { amountText = it },
-                    label = { Text("Amount ($currencySymbol)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = descText,
-                    onValueChange = { descText = it },
-                    label = { Text("Description") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    val amt = amountText.toDoubleOrNull() ?: liability.amount
-                    onConfirm(liability.copy(amount = amt, description = descText))
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = NeonCyan)
-            ) {
-                Text("SAVE", color = CanvasBackground, fontWeight = FontWeight.Bold)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
-        }
-    )
-}
