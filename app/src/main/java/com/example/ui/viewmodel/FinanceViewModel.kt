@@ -306,6 +306,37 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
     private val _showSyncChoiceDialog = MutableStateFlow(false)
     val showSyncChoiceDialog: StateFlow<Boolean> = _showSyncChoiceDialog.asStateFlow()
 
+    private val _showSetNewPasswordDialog = MutableStateFlow(false)
+    val showSetNewPasswordDialog: StateFlow<Boolean> = _showSetNewPasswordDialog.asStateFlow()
+
+    fun onPasswordRecoveryReauthSuccess(account: GoogleSignInAccount) {
+        val linkedEmail = uiState.value.googleAccountEmail
+        if (linkedEmail != null && linkedEmail.equals(account.email, ignoreCase = true)) {
+            _showSetNewPasswordDialog.value = true
+            emitFeedback("Identity verified via Google. Set a new Tier 2 password.")
+        } else {
+            emitFeedback("That Google account doesn't match the one linked to this app. Recovery denied.")
+        }
+    }
+
+    fun dismissSetNewPasswordDialog() {
+        _showSetNewPasswordDialog.value = false
+    }
+
+    fun setNewTier2PasswordViaRecovery(newTier2Password: String) {
+        if (newTier2Password.isBlank()) {
+            emitFeedback("New password cannot be blank.")
+            return
+        }
+        viewModelScope.launch {
+            val currentTier1 = appState.value?.tier1Password ?: "1234"
+            repository.updatePasswords(currentTier1, newTier2Password.trim())
+            emitFeedback("Tier 2 password reset successfully via Google verification.")
+            _showSetNewPasswordDialog.value = false
+            triggerAutoSync()
+        }
+    }
+
     fun onGoogleSignInSuccess(account: GoogleSignInAccount) {
         viewModelScope.launch {
             repository.updateSyncInfo(account.email, System.currentTimeMillis())
