@@ -163,7 +163,6 @@ fun DashboardScreen(
     val context = LocalContext.current
     var showExportDialog by remember { mutableStateOf(false) }
     var showCategoryExportDialog by remember { mutableStateOf(false) }
-    val availableCategories by viewModel.availableCategories.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
 
     // Dialog States
@@ -280,8 +279,8 @@ fun DashboardScreen(
             item {
                 NormalTransactionModule(
                     currencySymbol = uiState.currencySymbol,
-                    onRecordTransaction = { amount, type, desc, category, pin, onDone ->
-                        viewModel.addTransaction(amount, type, desc, category, pin, onDone)
+                    onRecordTransaction = { amount, type, desc, pin, onDone ->
+                        viewModel.addTransaction(amount, type, desc, pin, onDone)
                     }
                 )
             }
@@ -434,12 +433,11 @@ fun DashboardScreen(
     }
 
     if (showCategoryExportDialog) {
-        CategoryExportDialog(
-            availableCategories = availableCategories,
+        KeywordExportDialog(
             onDismiss = { showCategoryExportDialog = false },
-            onExport = { selectedCategories, startTimestamp, endTimestamp ->
-                val exportText = viewModel.buildCategoryExportText(selectedCategories, startTimestamp, endTimestamp)
-                val fileName = "RushuFin_CategoryExport_${System.currentTimeMillis()}.txt"
+            onExport = { keywords, startTimestamp, endTimestamp ->
+                val exportText = viewModel.buildKeywordExportText(keywords, startTimestamp, endTimestamp)
+                val fileName = "RushuFin_KeywordExport_${System.currentTimeMillis()}.txt"
                 val uri = FileExportUtil.saveTextToDownloads(context, fileName, exportText)
                 showCategoryExportDialog = false
                 scope.launch {
@@ -454,7 +452,7 @@ fun DashboardScreen(
                                 putExtra(Intent.EXTRA_STREAM, uri)
                                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                             }
-                            context.startActivity(Intent.createChooser(shareIntent, "Share category export"))
+                            context.startActivity(Intent.createChooser(shareIntent, "Share keyword export"))
                         }
                     } else {
                         snackbarHostState.showSnackbar("Export failed. Please try again.")
@@ -883,13 +881,12 @@ fun SplitBalanceRow(
 @Composable
 fun NormalTransactionModule(
     currencySymbol: String,
-    onRecordTransaction: (amount: Double, type: String, description: String, category: String, pin: String, onDone: () -> Unit) -> Unit,
+    onRecordTransaction: (amount: Double, type: String, description: String, pin: String, onDone: () -> Unit) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var selectedType by remember { mutableStateOf("INCOME") } // "INCOME" or "EXPENSE"
     var amountText by remember { mutableStateOf("") }
     var descriptionText by remember { mutableStateOf("") }
-    var categoryText by remember { mutableStateOf("") }
     var tier1PinText by remember { mutableStateOf("") }
 
     val isIncome = selectedType == "INCOME"
@@ -1013,28 +1010,6 @@ fun NormalTransactionModule(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Category Input (optional — defaults to Uncategorized)
-            OutlinedTextField(
-                value = categoryText,
-                onValueChange = { categoryText = it },
-                label = { Text("Category (optional)") },
-                placeholder = { Text(if (isIncome) "e.g. Salary, Freelance" else "e.g. Food, Rent, Travel") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Next),
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = accentColor,
-                    unfocusedBorderColor = CardGlassBorder,
-                    focusedTextColor = TextPrimary,
-                    unfocusedTextColor = TextPrimary,
-                    cursorColor = accentColor
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("transaction_category_input")
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
             // Tier 1 PIN Input
             OutlinedTextField(
                 value = tier1PinText,
@@ -1065,11 +1040,9 @@ fun NormalTransactionModule(
             Button(
                 onClick = {
                     val amt = amountText.toDoubleOrNull() ?: 0.0
-                    val cat = categoryText.trim().ifBlank { "Uncategorized" }
-                    onRecordTransaction(amt, selectedType, descriptionText, cat, tier1PinText) {
+                    onRecordTransaction(amt, selectedType, descriptionText, tier1PinText) {
                         amountText = ""
                         descriptionText = ""
-                        categoryText = ""
                         tier1PinText = ""
                     }
                 },
@@ -1831,12 +1804,12 @@ fun ExportTransactionsDialog(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CategoryExportDialog(
-    availableCategories: List<String>,
+fun KeywordExportDialog(
     onDismiss: () -> Unit,
-    onExport: (selectedCategories: Set<String>, startTimestamp: Long?, endTimestamp: Long?) -> Unit
+    onExport: (keywords: List<String>, startTimestamp: Long?, endTimestamp: Long?) -> Unit
 ) {
-    val selected = remember { mutableStateListOf<String>() }
+    val keywords = remember { mutableStateListOf<String>() }
+    var keywordInput by remember { mutableStateOf("") }
     var exportFromBeginning by remember { mutableStateOf(true) }
     var startDateMillis by remember { mutableStateOf<Long?>(null) }
     var endDateMillis by remember { mutableStateOf<Long?>(null) }
@@ -1845,105 +1818,129 @@ fun CategoryExportDialog(
 
     val dateLabelFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
 
+    fun addKeyword() {
+        val trimmed = keywordInput.trim()
+        if (trimmed.isNotEmpty() && !keywords.any { it.equals(trimmed, ignoreCase = true) }) {
+            keywords.add(trimmed)
+        }
+        keywordInput = ""
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = SurfaceDark,
         title = {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(Icons.Default.Download, contentDescription = null, tint = NeonCyan)
-                Text(text = "Export by Category", color = TextPrimary, fontWeight = FontWeight.Bold)
+                Text(text = "Export by Keyword", color = TextPrimary, fontWeight = FontWeight.Bold)
             }
         },
         text = {
             Column {
-                if (availableCategories.isEmpty()) {
-                    Text(
-                        text = "No categories found yet. Add a category when recording a transaction, then come back here.",
-                        color = TextSecondary,
-                        fontSize = 12.sp
+                Text(
+                    text = "Type a name or word (e.g. \"X\", \"Salary\") — any transaction whose description contains it will be grouped and subtotaled. Add as many as you like.",
+                    color = TextSecondary,
+                    fontSize = 12.sp
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = keywordInput,
+                        onValueChange = { keywordInput = it },
+                        label = { Text("Keyword / Name") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { addKeyword() }),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = NeonCyan,
+                            unfocusedBorderColor = CardGlassBorder,
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary,
+                            cursorColor = NeonCyan
+                        ),
+                        modifier = Modifier.weight(1f)
                     )
-                } else {
+                    Button(
+                        onClick = { addKeyword() },
+                        colors = ButtonDefaults.buttonColors(containerColor = NeonCyan)
+                    ) {
+                        Text("ADD", color = CanvasBackground, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                if (keywords.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 140.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        keywords.forEach { kw ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(kw, color = TextPrimary, fontSize = 13.sp)
+                                IconButton(onClick = { keywords.remove(kw) }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Remove", tint = NeonRed, modifier = Modifier.size(18.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+                HorizontalDivider(color = CardGlassBorder)
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Export From The Very Beginning", color = TextPrimary, fontSize = 13.sp)
+                    Switch(
+                        checked = exportFromBeginning,
+                        onCheckedChange = { exportFromBeginning = it },
+                        colors = SwitchDefaults.colors(checkedTrackColor = NeonCyan)
+                    )
+                }
+
+                if (!exportFromBeginning) {
+                    Spacer(modifier = Modifier.height(10.dp))
                     Text(
-                        text = "Select one or more categories:",
+                        text = "Choose a custom date range:",
                         color = TextSecondary,
                         fontSize = 12.sp
                     )
                     Spacer(modifier = Modifier.height(6.dp))
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 180.dp)
-                            .verticalScroll(rememberScrollState())
-                    ) {
-                        availableCategories.forEach { category ->
-                            val isChecked = selected.contains(category)
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        if (isChecked) selected.remove(category) else selected.add(category)
-                                    },
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Checkbox(
-                                    checked = isChecked,
-                                    onCheckedChange = {
-                                        if (it) selected.add(category) else selected.remove(category)
-                                    },
-                                    colors = CheckboxDefaults.colors(checkedColor = NeonCyan)
-                                )
-                                Text(category, color = TextPrimary, fontSize = 13.sp)
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-                    HorizontalDivider(color = CardGlassBorder)
-                    Spacer(modifier = Modifier.height(10.dp))
-
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text("Export From The Very Beginning", color = TextPrimary, fontSize = 13.sp)
-                        Switch(
-                            checked = exportFromBeginning,
-                            onCheckedChange = { exportFromBeginning = it },
-                            colors = SwitchDefaults.colors(checkedTrackColor = NeonCyan)
-                        )
-                    }
-
-                    if (!exportFromBeginning) {
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Text(
-                            text = "Choose a custom date range:",
-                            color = TextSecondary,
-                            fontSize = 12.sp
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        OutlinedButton(
+                            onClick = { showStartPicker = true },
+                            modifier = Modifier.weight(1f)
                         ) {
-                            OutlinedButton(
-                                onClick = { showStartPicker = true },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text(
-                                    text = startDateMillis?.let { dateLabelFormat.format(Date(it)) } ?: "Start Date",
-                                    fontSize = 11.sp
-                                )
-                            }
-                            OutlinedButton(
-                                onClick = { showEndPicker = true },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text(
-                                    text = endDateMillis?.let { dateLabelFormat.format(Date(it)) } ?: "End Date",
-                                    fontSize = 11.sp
-                                )
-                            }
+                            Text(
+                                text = startDateMillis?.let { dateLabelFormat.format(Date(it)) } ?: "Start Date",
+                                fontSize = 11.sp
+                            )
+                        }
+                        OutlinedButton(
+                            onClick = { showEndPicker = true },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = endDateMillis?.let { dateLabelFormat.format(Date(it)) } ?: "End Date",
+                                fontSize = 11.sp
+                            )
                         }
                     }
                 }
@@ -1952,11 +1949,12 @@ fun CategoryExportDialog(
         confirmButton = {
             Button(
                 onClick = {
+                    if (keywordInput.isNotBlank()) addKeyword()
                     val start = if (exportFromBeginning) null else startDateMillis
                     val end = if (exportFromBeginning) null else endDateMillis
-                    onExport(selected.toSet(), start, end)
+                    onExport(keywords.toList(), start, end)
                 },
-                enabled = selected.isNotEmpty(),
+                enabled = keywords.isNotEmpty() || keywordInput.isNotBlank(),
                 colors = ButtonDefaults.buttonColors(containerColor = NeonCyan)
             ) {
                 Text("EXPORT", color = CanvasBackground, fontWeight = FontWeight.Bold)
@@ -2366,7 +2364,7 @@ fun SettingsAndCloudSyncDialog(
 
                         if (uiState.googleAccountEmail != null) {
                             Spacer(modifier = Modifier.height(10.dp))
-                                                        if (!confirmSwitchAccount) {
+                            if (!confirmSwitchAccount) {
                                 OutlinedButton(
                                     onClick = { confirmSwitchAccount = true },
                                     modifier = Modifier.fillMaxWidth(),
@@ -2445,7 +2443,7 @@ fun SettingsAndCloudSyncDialog(
                         ) {
                             Icon(Icons.Default.Download, contentDescription = null, tint = NeonCyan, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("EXPORT BY CATEGORY", fontSize = 12.sp)
+                            Text("EXPORT BY KEYWORD", fontSize = 12.sp)
                         }
                     }
                 }
