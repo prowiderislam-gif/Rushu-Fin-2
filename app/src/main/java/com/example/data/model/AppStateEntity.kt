@@ -13,5 +13,6 @@ data class AppStateEntity(
     val currencySymbol: String = "₹",
     val lastSyncTime: Long = 0L,
     val googleAccountEmail: String? = null,
-    val peakLiability: Double = 0.0
+    val peakLiability: Double = 0.0,
+    val showLiabilities: Boolean = true
 )
