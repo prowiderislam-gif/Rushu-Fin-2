@@ -2366,3 +2366,245 @@ fun SettingsAndCloudSyncDialog(
 
                         if (uiState.googleAccountEmail != null) {
                             Spacer(modifier = Modifier.height(10.dp))
+                                                        if (!confirmSwitchAccount) {
+                                OutlinedButton(
+                                    onClick = { confirmSwitchAccount = true },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonCyan)
+                                ) {
+                                    Text("SWITCH GOOGLE ACCOUNT", fontSize = 11.sp)
+                                }
+                            } else {
+                                Text(
+                                    text = "This backs up the current account, clears local data, then lets you sign in to a different account. Continue?",
+                                    color = NeonCyan,
+                                    fontSize = 11.sp
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Button(
+                                        onClick = {
+                                            confirmSwitchAccount = false
+                                            onSwitchAccount()
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(10.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = NeonCyan)
+                                    ) {
+                                        Text("YES, SWITCH", fontSize = 11.sp, color = CanvasBackground, fontWeight = FontWeight.Bold)
+                                    }
+                                    OutlinedButton(
+                                        onClick = { confirmSwitchAccount = false },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(10.dp)
+                                    ) {
+                                        Text("CANCEL", fontSize = 11.sp)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Export Transactions Section
+                GlassBox(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(text = "EXPORT TRANSACTIONS", color = NeonCyan, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Save your ledger as a text file you can open or share.",
+                            color = TextSecondary,
+                            fontSize = 11.sp
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Button(
+                            onClick = onExportTransactions,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = NeonCyan)
+                        ) {
+                            Icon(Icons.Default.Download, contentDescription = null, tint = CanvasBackground, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("EXPORT AS TEXT FILE", fontSize = 12.sp, color = CanvasBackground, fontWeight = FontWeight.Bold)
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = onExportByCategory,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonCyan)
+                        ) {
+                            Icon(Icons.Default.Download, contentDescription = null, tint = NeonCyan, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("EXPORT BY CATEGORY", fontSize = 12.sp)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Security Passwords Section
+                GlassBox(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(text = "SECURITY TIER PASSWORDS", color = NeonYellow, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        if (uiState.isAdminModeUnlocked) {
+                            OutlinedTextField(
+                                value = newTier1,
+                                onValueChange = { newTier1 = it },
+                                label = { Text("Tier 1 PIN (Transactions)") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = newTier2,
+                                onValueChange = { newTier2 = it },
+                                label = { Text("Tier 2 Master (Admin Mode)") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(
+                                onClick = {
+                                    onChangePasswords(newTier1, newTier2) {
+                                        onDismiss()
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = NeonYellow),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("SAVE PASSWORDS", color = CanvasBackground, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
+                        } else {
+                            Text(
+                                text = "Unlock Admin Mode (Tier 2) to change Tier 1 PIN or Master Password.",
+                                color = TextMuted,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("CLOSE", color = NeonCyan, fontWeight = FontWeight.Bold)
+            }
+        }
+    )
+}
+
+@Composable
+fun EditTransactionDialog(
+    transaction: TransactionEntity,
+    currencySymbol: String,
+    onDismiss: () -> Unit,
+    onConfirm: (TransactionEntity) -> Unit
+) {
+    var amountText by remember { mutableStateOf(transaction.amount.toString()) }
+    var descText by remember { mutableStateOf(transaction.description) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = SurfaceDark,
+        title = { Text("Admin Override: Edit Transaction", color = NeonCyan, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = amountText,
+                    onValueChange = { amountText = it },
+                    label = { Text("Amount ($currencySymbol)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = descText,
+                    onValueChange = { descText = it },
+                    label = { Text("Description") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val amt = amountText.toDoubleOrNull() ?: transaction.amount
+                    onConfirm(transaction.copy(amount = amt, description = descText))
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = NeonCyan)
+            ) {
+                Text("SAVE", color = CanvasBackground, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
+        }
+    )
+}
+
+@Composable
+fun EditLiabilityDialog(
+    liability: LiabilityEntity,
+    currencySymbol: String,
+    onDismiss: () -> Unit,
+    onConfirm: (LiabilityEntity) -> Unit
+) {
+    var amountText by remember { mutableStateOf(liability.amount.toString()) }
+    var descText by remember { mutableStateOf(liability.description) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = SurfaceDark,
+        title = { Text("Admin Override: Edit Liability", color = NeonCyan, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = amountText,
+                    onValueChange = { amountText = it },
+                    label = { Text("Amount ($currencySymbol)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = descText,
+                    onValueChange = { descText = it },
+                    label = { Text("Description") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val amt = amountText.toDoubleOrNull() ?: liability.amount
+                    onConfirm(liability.copy(amount = amt, description = descText))
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = NeonCyan)
+            ) {
+                Text("SAVE", color = CanvasBackground, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
+        }
+    )
+}
