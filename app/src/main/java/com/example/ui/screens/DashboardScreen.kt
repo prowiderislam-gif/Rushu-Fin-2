@@ -1,6 +1,8 @@
 package com.example.ui.screens
 
 import android.app.Activity
+import android.content.Intent
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -43,6 +45,7 @@ import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Lock
@@ -55,6 +58,9 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -63,13 +69,17 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -128,6 +138,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import com.example.util.indianNumber
+import com.example.util.FileExportUtil
 
 @Composable
 fun DashboardScreen(
@@ -143,6 +154,8 @@ fun DashboardScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    var showExportDialog by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
 
     // Dialog States
@@ -361,6 +374,10 @@ fun DashboardScreen(
             },
             onChangePasswords = { t1, t2, onDone ->
                 viewModel.updatePasswords(t1, t2, onDone)
+            },
+            onExportTransactions = {
+                showSettingsDialog = false
+                showExportDialog = true
             }
         )
     }
@@ -371,6 +388,36 @@ fun DashboardScreen(
             onReplace = { viewModel.resolveSyncChoiceReplaceLocal() },
             onDiscardCloud = { viewModel.resolveSyncChoiceDiscardCloud() },
             onDismiss = { viewModel.dismissSyncChoiceDialog() }
+        )
+    }
+
+    if (showExportDialog) {
+        ExportTransactionsDialog(
+            onDismiss = { showExportDialog = false },
+            onExport = { startTimestamp, endTimestamp, includeLiabilities ->
+                val exportText = viewModel.buildExportText(startTimestamp, endTimestamp, includeLiabilities)
+                val fileName = "RushuFin_Export_${System.currentTimeMillis()}.txt"
+                val uri = FileExportUtil.saveTextToDownloads(context, fileName, exportText)
+                showExportDialog = false
+                scope.launch {
+                    if (uri != null) {
+                        val result = snackbarHostState.showSnackbar(
+                            message = "Saved to Downloads/$fileName",
+                            actionLabel = "SHARE"
+                        )
+                        if (result == SnackbarResult.ActionPerformed) {
+                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_STREAM, uri)
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            context.startActivity(Intent.createChooser(shareIntent, "Share transaction export"))
+                        }
+                    } else {
+                        snackbarHostState.showSnackbar("Export failed. Please try again.")
+                    }
+                }
+            }
         )
     }
 
@@ -1564,6 +1611,156 @@ fun SyncChoiceDialog(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ExportTransactionsDialog(
+    onDismiss: () -> Unit,
+    onExport: (startTimestamp: Long?, endTimestamp: Long?, includeLiabilities: Boolean) -> Unit
+) {
+    var includeLiabilities by remember { mutableStateOf(true) }
+    var exportFromBeginning by remember { mutableStateOf(true) }
+    var startDateMillis by remember { mutableStateOf<Long?>(null) }
+    var endDateMillis by remember { mutableStateOf<Long?>(null) }
+    var showStartPicker by remember { mutableStateOf(false) }
+    var showEndPicker by remember { mutableStateOf(false) }
+
+    val dateLabelFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = SurfaceDark,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Default.Download, contentDescription = null, tint = NeonCyan)
+                Text(text = "Export Transactions", color = TextPrimary, fontWeight = FontWeight.Bold)
+            }
+        },
+        text = {
+            Column {
+                // Include liabilities toggle
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Include Liability Section", color = TextPrimary, fontSize = 13.sp)
+                    Switch(
+                        checked = includeLiabilities,
+                        onCheckedChange = { includeLiabilities = it },
+                        colors = SwitchDefaults.colors(checkedTrackColor = NeonCyan)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+                HorizontalDivider(color = CardGlassBorder)
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // From-beginning toggle
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Export From The Very Beginning", color = TextPrimary, fontSize = 13.sp)
+                    Switch(
+                        checked = exportFromBeginning,
+                        onCheckedChange = { exportFromBeginning = it },
+                        colors = SwitchDefaults.colors(checkedTrackColor = NeonCyan)
+                    )
+                }
+
+                if (!exportFromBeginning) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = "Choose a custom date range:",
+                        color = TextSecondary,
+                        fontSize = 12.sp
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { showStartPicker = true },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = startDateMillis?.let { dateLabelFormat.format(Date(it)) } ?: "Start Date",
+                                fontSize = 11.sp
+                            )
+                        }
+                        OutlinedButton(
+                            onClick = { showEndPicker = true },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = endDateMillis?.let { dateLabelFormat.format(Date(it)) } ?: "End Date",
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val start = if (exportFromBeginning) null else startDateMillis
+                    val end = if (exportFromBeginning) null else endDateMillis
+                    onExport(start, end, includeLiabilities)
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = NeonCyan)
+            ) {
+                Text("EXPORT", color = CanvasBackground, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("CANCEL", color = TextSecondary)
+            }
+        }
+    )
+
+    if (showStartPicker) {
+        val state = rememberDatePickerState(initialSelectedDateMillis = startDateMillis)
+        DatePickerDialog(
+            onDismissRequest = { showStartPicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    startDateMillis = state.selectedDateMillis
+                    showStartPicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showStartPicker = false }) { Text("CANCEL") }
+            }
+        ) {
+            DatePicker(state = state)
+        }
+    }
+
+    if (showEndPicker) {
+        val state = rememberDatePickerState(initialSelectedDateMillis = endDateMillis)
+        DatePickerDialog(
+            onDismissRequest = { showEndPicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    // Push to end-of-day so the selected day is fully included.
+                    val millis = state.selectedDateMillis
+                    endDateMillis = millis?.plus(23 * 60 * 60 * 1000L + 59 * 60 * 1000L + 59 * 1000L)
+                    showEndPicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEndPicker = false }) { Text("CANCEL") }
+            }
+        ) {
+            DatePicker(state = state)
+        }
+    }
+}
+
 @Composable
 fun AdminUnlockDialog(
     onDismiss: () -> Unit,
@@ -1789,6 +1986,7 @@ fun SettingsAndCloudSyncDialog(
     onRestoreNow: () -> Unit,
     onClearBackup: () -> Unit,
     onSwitchAccount: () -> Unit,
+    onExportTransactions: () -> Unit,
     onChangePasswords: (tier1: String, tier2: String, onDone: () -> Unit) -> Unit
 ) {
     var newTier1 by remember { mutableStateOf(uiState.tier1Password) }
@@ -1964,6 +2162,37 @@ fun SettingsAndCloudSyncDialog(
                         }
                     }
                 }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Export Transactions Section
+                GlassBox(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(text = "EXPORT TRANSACTIONS", color = NeonCyan, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Save your ledger as a text file you can open or share.",
+                            color = TextSecondary,
+                            fontSize = 11.sp
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Button(
+                            onClick = onExportTransactions,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = NeonCyan)
+                        ) {
+                            Icon(Icons.Default.Download, contentDescription = null, tint = CanvasBackground, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("EXPORT AS TEXT FILE", fontSize = 12.sp, color = CanvasBackground, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
 
                 // Security Passwords Section
                 GlassBox(
