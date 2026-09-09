@@ -13,23 +13,40 @@ import androidx.core.view.WindowCompat
 fun MyApplicationTheme(
     content: @Composable () -> Unit
 ) {
+    val backgroundColor = CanvasBackground
+    val primaryColor = NeonCyan
+    val cardGlassColor = CardGlass
+    val primaryTextColor = TextPrimary
+    val secondaryColor = NeonGreen
+    val tertiaryColor = NeonYellow
+    val surfaceDarkColor = SurfaceDark
+    val surfaceCardColor = SurfaceCard
+    val secondaryTextColor = TextSecondary
+    val errorColor = NeonRed
+
     val colorScheme = darkColorScheme(
-        primary = NeonCyan,
-        onPrimary = CanvasBackground,
-        primaryContainer = CardGlass,
-        onPrimaryContainer = TextPrimary,
-        secondary = NeonGreen,
-        onSecondary = CanvasBackground,
-        tertiary = NeonYellow,
-        onTertiary = CanvasBackground,
-        background = CanvasBackground,
-        onBackground = TextPrimary,
-        surface = SurfaceDark,
-        onSurface = TextPrimary,
-        surfaceVariant = SurfaceCard,
-        onSurfaceVariant = TextSecondary,
-        error = NeonRed,
-        onError = CanvasBackground
+        primary = primaryColor,
+        onPrimary = backgroundColor,
+        primaryContainer = cardGlassColor,
+        onPrimaryContainer = primaryTextColor,
+
+        secondary = secondaryColor,
+        onSecondary = backgroundColor,
+
+        tertiary = tertiaryColor,
+        onTertiary = backgroundColor,
+
+        background = backgroundColor,
+        onBackground = primaryTextColor,
+
+        surface = surfaceDarkColor,
+        onSurface = primaryTextColor,
+
+        surfaceVariant = surfaceCardColor,
+        onSurfaceVariant = secondaryTextColor,
+
+        error = errorColor,
+        onError = backgroundColor
     )
 
     val view = LocalView.current
@@ -38,8 +55,8 @@ fun MyApplicationTheme(
         SideEffect {
             val window = (view.context as Activity).window
 
-            window.statusBarColor = CanvasBackground.toArgb()
-            window.navigationBarColor = CanvasBackground.toArgb()
+            window.statusBarColor = backgroundColor.toArgb()
+            window.navigationBarColor = backgroundColor.toArgb()
 
             WindowCompat.getInsetsController(
                 window,
