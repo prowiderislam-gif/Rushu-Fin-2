@@ -46,8 +46,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ui.theme.AppTheme
 import com.example.ui.theme.CardGlass
 import com.example.ui.theme.CardGlassBorder
+import com.example.ui.theme.LocalAppTheme
 import com.example.ui.theme.NeonGreen
 import com.example.ui.theme.NeonGreenGlow
 import com.example.ui.theme.NeonRed
@@ -72,22 +74,40 @@ fun GlassBox(
     backgroundColor: Color = CardGlass,
     content: @Composable BoxScope.() -> Unit
 ) {
+    val theme = LocalAppTheme.current
+    val basicMode = theme == AppTheme.BASIC
+    val kittyMode = theme == AppTheme.KITTY
+
+    // Kitty theme gets extra-round, soft "paw-like" corners everywhere,
+    // regardless of what shape the caller asked for — a single change
+    // here re-shapes every card in the app.
+    val effectiveShape = if (kittyMode) RoundedCornerShape(28.dp) else shape
+
     val animatedGlowColor by animateColorAsState(
-        targetValue = glowColor,
+        targetValue = if (basicMode) Color.Transparent else glowColor,
         animationSpec = tween(durationMillis = 400),
         label = "glowColor"
     )
 
     Box(
         modifier = modifier
-            .clip(shape)
+            .clip(effectiveShape)
             .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        backgroundColor.copy(alpha = 0.70f),
-                        backgroundColor.copy(alpha = 0.40f)
+                brush = if (basicMode) {
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            backgroundColor.copy(alpha = 0.95f),
+                            backgroundColor.copy(alpha = 0.95f)
+                        )
                     )
-                )
+                } else {
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            backgroundColor.copy(alpha = 0.70f),
+                            backgroundColor.copy(alpha = 0.40f)
+                        )
+                    )
+                }
             )
             .drawBehind {
                 if (animatedGlowColor != Color.Transparent) {
@@ -119,38 +139,50 @@ fun GlassBox(
                 }
             }
             .border(
-                width = 1.dp,
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        if (animatedGlowColor != Color.Transparent) animatedGlowColor.copy(alpha = 0.5f) else borderColor.copy(alpha = 0.6f),
-                        borderColor.copy(alpha = 0.2f),
-                        if (animatedGlowColor != Color.Transparent) animatedGlowColor.copy(alpha = 0.3f) else borderColor.copy(alpha = 0.35f)
+                width = if (basicMode) 1.5.dp else 1.dp,
+                brush = if (basicMode) {
+                    Brush.linearGradient(colors = listOf(borderColor.copy(alpha = 0.9f), borderColor.copy(alpha = 0.9f)))
+                } else {
+                    Brush.linearGradient(
+                        colors = listOf(
+                            if (animatedGlowColor != Color.Transparent) animatedGlowColor.copy(alpha = 0.5f) else borderColor.copy(alpha = 0.6f),
+                            borderColor.copy(alpha = 0.2f),
+                            if (animatedGlowColor != Color.Transparent) animatedGlowColor.copy(alpha = 0.3f) else borderColor.copy(alpha = 0.35f)
+                        )
                     )
-                ),
-                shape = shape
+                },
+                shape = effectiveShape
             ),
         content = content
     )
 }
 
 /**
- * Text style with neon glow shadow.
+ * Text style with neon glow shadow — automatically drops the glow/blur
+ * in Basic theme (crisper, easier to read), and softens slightly in
+ * Kitty theme to match its pastel palette.
  */
+@Composable
 fun neonTextStyle(
     color: Color,
     fontSize: TextUnit = 20.sp,
     fontWeight: FontWeight = FontWeight.Bold,
     glowRadius: Float = 16f
 ): TextStyle {
+    val theme = LocalAppTheme.current
+    val basicMode = theme == AppTheme.BASIC
+    val kittyMode = theme == AppTheme.KITTY
+    val effectiveGlowRadius = if (kittyMode) glowRadius * 0.6f else glowRadius
+
     return TextStyle(
         color = color,
         fontSize = fontSize,
-        fontWeight = fontWeight,
+        fontWeight = if (basicMode) FontWeight.Bold else fontWeight,
         fontFamily = FontFamily.SansSerif,
-        shadow = Shadow(
+        shadow = if (basicMode) null else Shadow(
             color = color.copy(alpha = 0.85f),
             offset = Offset(0f, 0f),
-            blurRadius = glowRadius
+            blurRadius = effectiveGlowRadius
         )
     )
 }
