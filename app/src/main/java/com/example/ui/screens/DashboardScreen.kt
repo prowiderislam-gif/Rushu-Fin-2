@@ -122,7 +122,9 @@ import com.example.R
 import com.example.data.model.LiabilityEntity
 import com.example.data.model.TransactionEntity
 import com.example.ui.components.GlassBox
+import com.example.ui.components.FloatingPetalsOverlay
 import com.example.ui.components.GlowingPayoffProgressBar
+import com.example.ui.components.ThemedDivider
 import com.example.ui.components.neonTextStyle
 import com.example.ui.theme.CanvasBackground
 import com.example.ui.theme.CardGlass
@@ -338,6 +340,13 @@ fun DashboardScreen(
             item {
                 Spacer(modifier = Modifier.height(32.dp))
             }
+        }
+
+        if (uiState.themeMode == AppTheme.SAKURA_BLOOM || uiState.themeMode == AppTheme.MOONLIT_PURPLE) {
+            FloatingPetalsOverlay(
+                petalColor = NeonCyan,
+                petalCount = 14
+            )
         }
 
         SnackbarHost(
@@ -712,7 +721,7 @@ fun MainLiveBalanceCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            HorizontalDivider(color = CardGlassBorder.copy(alpha = 0.4f), thickness = 1.dp)
+            ThemedDivider()
 
             Spacer(modifier = Modifier.height(12.dp))
 
