@@ -558,10 +558,21 @@ fun AppHeader(
             }
 
             Column {
-                Text(
-                    text = "RUSHU FIN",
-                    style = neonTextStyle(NeonCyan, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, glowRadius = 16f)
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "RUSHU FIN",
+                        style = neonTextStyle(NeonCyan, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, glowRadius = 16f)
+                    )
+                    val themeAccentEmoji = when (LocalAppTheme.current) {
+                        AppTheme.GOLDEN_HIVE -> "\uD83D\uDC1D"
+                        AppTheme.SAKURA_BLOOM, AppTheme.MOONLIT_PURPLE -> "\uD83C\uDF38"
+                        else -> null
+                    }
+                    if (themeAccentEmoji != null) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = themeAccentEmoji, fontSize = 16.sp)
+                    }
+                }
                 Text(
                     text = "Personal Finance & Liability Tracking",
                     color = TextSecondary,
@@ -2542,10 +2553,24 @@ fun SettingsAndCloudSyncDialog(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         ThemeOptionRow(
-                            title = "Sweet Kitty",
-                            description = "Soft charcoal-pink theme with round, cute card corners.",
-                            selected = uiState.themeMode == AppTheme.KITTY,
-                            onClick = { onSelectTheme(AppTheme.KITTY) }
+                            title = "🐝 Golden Hive",
+                            description = "Black and gold, honeycomb accents.",
+                            selected = uiState.themeMode == AppTheme.GOLDEN_HIVE,
+                            onClick = { onSelectTheme(AppTheme.GOLDEN_HIVE) }
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        ThemeOptionRow(
+                            title = "🌸 Sakura Bloom",
+                            description = "Black and rose-pink, cherry blossom accents.",
+                            selected = uiState.themeMode == AppTheme.SAKURA_BLOOM,
+                            onClick = { onSelectTheme(AppTheme.SAKURA_BLOOM) }
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        ThemeOptionRow(
+                            title = "🌙 Moonlit Purple",
+                            description = "Violet chrome with green balance, gold initial, pink liability.",
+                            selected = uiState.themeMode == AppTheme.MOONLIT_PURPLE,
+                            onClick = { onSelectTheme(AppTheme.MOONLIT_PURPLE) }
                         )
                     }
                 }
