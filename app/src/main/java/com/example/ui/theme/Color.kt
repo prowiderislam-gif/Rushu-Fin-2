@@ -185,4 +185,26 @@ val TextMuted: Color
         AppTheme.SAKURA_BLOOM -> Color(0xFF9C7A8A)
         AppTheme.MOONLIT_PURPLE -> Color(0xFF8A7A9C)
         else -> Color(0xFF71717A)
+        package com.example.ui.theme
+
+import androidx.compose.ui.graphics.Color
+
+// Obsidian & Hinata Dark Theme Palette
+val HinataBackground = Color(0xFF040008)       // Deep Obsidian Canvas
+val HinataSurface = Color(0xFF0B0216)          // Dark Violet Card Surface
+val HinataCardBorder = Color(0x40A855F7)       // Purple Neon Glow Border
+val HinataCardGlow = Color(0x33A855F7)         // Outer Shadow Glow
+
+// Neon & Metric Accents
+val NeonMintGreen = Color(0xFF00FFB2)          // Live Balance Neon Mint
+val EmeraldIncome = Color(0xFF34D399)          // Total Income Text & Icon
+val RoseDeficit = Color(0xFFF43F5E)            // Total Expenses & Deficit Text
+
+// Soft Lavender & Sakura Accents
+val HinataPurpleLight = Color(0xFFE9D5FF)      // Text Primary
+val HinataPurpleMuted = Color(0xFFC084FC)      // Muted Purple
+val HinataSakuraPink = Color(0xFFF472B6)       // Sakura Petal Pink
+val HinataPillBg = Color(0x803B0764)           // Badge / Button Background
+val HinataPillBorder = Color(0x80A855F7)       // Badge / Button Border
+val HinataButtonBg = Color(0xFF2E1065)         // Button Purple
     }
