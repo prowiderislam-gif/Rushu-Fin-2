@@ -13,65 +13,59 @@ import androidx.core.view.WindowCompat
 fun MyApplicationTheme(
     content: @Composable () -> Unit
 ) {
-    val backgroundColor = CanvasBackground
-    val primaryColor = NeonCyan
-    val cardGlassColor = CardGlass
-    val primaryTextColor = TextPrimary
-    val secondaryColor = NeonGreen
-    val tertiaryColor = NeonYellow
-    val surfaceDarkColor = SurfaceDark
-    val surfaceCardColor = SurfaceCard
-    val secondaryTextColor = TextSecondary
-    val errorColor = NeonRed
+    // These color values are theme-reactive (they read the currently selected
+    // App Theme via LocalAppTheme), so they must be read here inside a
+    // @Composable body — not in a top-level val or inside a SideEffect lambda.
+    val primary = NeonCyan
+    val onPrimary = CanvasBackground
+    val primaryContainer = CardGlass
+    val onPrimaryContainer = TextPrimary
+    val secondary = NeonGreen
+    val tertiary = NeonYellow
+    val background = CanvasBackground
+    val onBackground = TextPrimary
+    val surface = SurfaceDark
+    val onSurface = TextPrimary
+    val surfaceVariant = SurfaceCard
+    val onSurfaceVariant = TextSecondary
+    val error = NeonRed
 
-    val colorScheme = darkColorScheme(
-        primary = primaryColor,
-        onPrimary = backgroundColor,
-        primaryContainer = cardGlassColor,
-        onPrimaryContainer = primaryTextColor,
-
-        secondary = secondaryColor,
-        onSecondary = backgroundColor,
-
-        tertiary = tertiaryColor,
-        onTertiary = backgroundColor,
-
-        background = backgroundColor,
-        onBackground = primaryTextColor,
-
-        surface = surfaceDarkColor,
-        onSurface = primaryTextColor,
-
-        surfaceVariant = surfaceCardColor,
-        onSurfaceVariant = secondaryTextColor,
-
-        error = errorColor,
-        onError = backgroundColor
+    val darkColorScheme = darkColorScheme(
+        primary = primary,
+        onPrimary = onPrimary,
+        primaryContainer = primaryContainer,
+        onPrimaryContainer = onPrimaryContainer,
+        secondary = secondary,
+        onSecondary = onPrimary,
+        tertiary = tertiary,
+        onTertiary = onPrimary,
+        background = background,
+        onBackground = onBackground,
+        surface = surface,
+        onSurface = onSurface,
+        surfaceVariant = surfaceVariant,
+        onSurfaceVariant = onSurfaceVariant,
+        error = error,
+        onError = onPrimary
     )
 
-    val view = LocalView.current
+    // Captured as a plain value above, so it's safe to reference inside the
+    // non-composable SideEffect lambda below.
+    val statusBarColorArgb = background.toArgb()
 
+    val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-
-            window.statusBarColor = backgroundColor.toArgb()
-            window.navigationBarColor = backgroundColor.toArgb()
-
-            WindowCompat.getInsetsController(
-                window,
-                view
-            ).isAppearanceLightStatusBars = false
-
-            WindowCompat.getInsetsController(
-                window,
-                view
-            ).isAppearanceLightNavigationBars = false
+            window.statusBarColor = statusBarColorArgb
+            window.navigationBarColor = statusBarColorArgb
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
+            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = false
         }
     }
 
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = darkColorScheme,
         typography = Typography,
         content = content
     )
