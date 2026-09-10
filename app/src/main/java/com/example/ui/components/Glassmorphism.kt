@@ -2,12 +2,14 @@ package com.example.ui.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -26,15 +29,19 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
@@ -147,9 +154,32 @@ fun GlassBox(
                     )
                 },
                 shape = effectiveShape
-            ),
-        content = content
-    )
+            )
+    ) {
+        content()
+
+        // Decorative cherry-blossom corner accents for the sakura-style themes —
+        // purely visual, low alpha so they never compete with real content.
+        val showCornerFlowers = theme == AppTheme.SAKURA_BLOOM || theme == AppTheme.MOONLIT_PURPLE
+        if (showCornerFlowers) {
+            Text(
+                text = "🌸",
+                fontSize = 15.sp,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(6.dp)
+                    .alpha(0.5f)
+            )
+            Text(
+                text = "🌸",
+                fontSize = 18.sp,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(6.dp)
+                    .alpha(0.55f)
+            )
+        }
+    }
 }
 
 /**
@@ -334,5 +364,97 @@ fun GlowingPayoffProgressBar(
                 }
             }
         }
+    }
+}
+
+/**
+ * Decorative floating cherry-blossom petals drifting down the screen on a
+ * loop — purely visual (no touch handling, so it never blocks scrolling or
+ * taps on whatever it's layered over). Used for the sakura-style themes.
+ */
+@Composable
+fun FloatingPetalsOverlay(
+    modifier: Modifier = Modifier,
+    petalColor: Color = Color(0xFFFF9CC7),
+    petalCount: Int = 14
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "petals")
+    val petals = remember(petalCount) {
+        List(petalCount) {
+            PetalSpec(
+                startXFraction = (it * 37 % 100) / 100f,
+                driftAmplitude = 14f + (it % 5) * 6f,
+                sizeDp = 6f + (it % 4) * 3f,
+                durationMillis = 9000 + (it % 6) * 1400,
+                delayFraction = (it * 53 % 100) / 100f,
+                rotationSpeed = if (it % 2 == 0) 1f else -1f
+            )
+        }
+    }
+
+    Box(modifier = modifier.fillMaxSize()) {
+        petals.forEach { petal ->
+            val progress by infiniteTransition.animateFloat(
+                initialValue = 0f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(durationMillis = petal.durationMillis, easing = LinearEasing),
+                    repeatMode = RepeatMode.Restart
+                ),
+                label = "petalFall"
+            )
+
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val effectiveProgress = (progress + petal.delayFraction) % 1f
+                val yPos = effectiveProgress * size.height
+                val xDrift = kotlin.math.sin(effectiveProgress * 2 * Math.PI.toFloat()) * petal.driftAmplitude
+                val xPos = petal.startXFraction * size.width + xDrift
+                val fadeAlpha = when {
+                    effectiveProgress < 0.08f -> effectiveProgress / 0.08f
+                    effectiveProgress > 0.92f -> (1f - effectiveProgress) / 0.08f
+                    else -> 1f
+                }
+                val rotation = effectiveProgress * 360f * petal.rotationSpeed
+
+                rotate(degrees = rotation, pivot = Offset(xPos, yPos)) {
+                    drawOval(
+                        color = petalColor.copy(alpha = 0.35f * fadeAlpha),
+                        topLeft = Offset(xPos - petal.sizeDp, yPos - petal.sizeDp / 2),
+                        size = androidx.compose.ui.geometry.Size(petal.sizeDp * 2, petal.sizeDp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+private data class PetalSpec(
+    val startXFraction: Float,
+    val driftAmplitude: Float,
+    val sizeDp: Float,
+    val durationMillis: Int,
+    val delayFraction: Float,
+    val rotationSpeed: Float
+)
+
+/**
+ * A themed divider — a plain line for most themes, or a line with a small
+ * flower centered in it for the sakura-style themes.
+ */
+@Composable
+fun ThemedDivider(modifier: Modifier = Modifier) {
+    val theme = LocalAppTheme.current
+    val showFlower = theme == AppTheme.SAKURA_BLOOM || theme == AppTheme.MOONLIT_PURPLE
+    if (showFlower) {
+        Row(
+            modifier = modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            HorizontalDivider(modifier = Modifier.weight(1f), color = CardGlassBorder, thickness = 1.dp)
+            Text(text = "🌸", fontSize = 12.sp, modifier = Modifier.padding(horizontal = 8.dp))
+            HorizontalDivider(modifier = Modifier.weight(1f), color = CardGlassBorder, thickness = 1.dp)
+        }
+    } else {
+        HorizontalDivider(modifier = modifier, color = CardGlassBorder)
     }
 }
