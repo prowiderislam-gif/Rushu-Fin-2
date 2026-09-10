@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -103,6 +104,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -127,22 +129,7 @@ import com.example.ui.components.GlowingPayoffProgressBar
 import com.example.ui.components.ThemedDivider
 import com.example.ui.components.neonTextStyle
 import com.example.ui.components.HinataMainBalanceCard
-import com.example.ui.theme.CanvasBackground
-import com.example.ui.theme.CardGlass
-import com.example.ui.theme.CardGlassBorder
-import com.example.ui.theme.NeonCyan
-import com.example.ui.theme.NeonCyanGlow
-import com.example.ui.theme.NeonGreen
-import com.example.ui.theme.NeonGreenGlow
-import com.example.ui.theme.NeonPurple
-import com.example.ui.theme.NeonRed
-import com.example.ui.theme.NeonRedGlow
-import com.example.ui.theme.NeonYellow
-import com.example.ui.theme.NeonYellowGlow
-import com.example.ui.theme.SurfaceDark
-import com.example.ui.theme.TextMuted
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
+import com.example.ui.theme.*
 import com.example.ui.viewmodel.FinanceUiState
 import com.example.ui.viewmodel.FinanceViewModel
 import com.google.android.gms.auth.api.signin.GoogleSignIn
@@ -153,8 +140,6 @@ import java.util.Date
 import java.util.Locale
 import com.example.util.indianNumber
 import com.example.util.FileExportUtil
-import com.example.ui.theme.AppTheme
-import com.example.ui.theme.LocalAppTheme
 
 @Composable
 fun DashboardScreen(
@@ -234,11 +219,27 @@ fun DashboardScreen(
         LocalDensity provides scaledDensity
     ) {
 
+    val isHinata = uiState.themeMode == AppTheme.HINATA
+
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(CanvasBackground)
     ) {
+        // GIANT HINATA: Placed behind the top buttons and spans down across the Main Balance Box!
+        if (isHinata) {
+            Image(
+                painter = painterResource(id = R.drawable.hinata_corner),
+                contentDescription = "Hinata Hyuga",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 22.dp)
+                    .width(250.dp)
+                    .height(360.dp)
+            )
+        }
+
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -263,7 +264,7 @@ fun DashboardScreen(
                 )
             }
 
-            // Top Section — Main Live Balance Box with Hinata
+            // Top Section — Main Live Balance Box
             item {
                 HinataMainBalanceCard(
                     liveBalance = uiState.liveBalance,
@@ -273,7 +274,7 @@ fun DashboardScreen(
                 )
             }
 
-            // Middle Section — Split Balance Row
+            // Middle Section — Split Balance Row with Perfectly Equal Heights
             item {
                 SplitBalanceRow(
                     uiState = uiState,
@@ -342,7 +343,7 @@ fun DashboardScreen(
             }
         }
 
-        if (uiState.themeMode == AppTheme.HINATA) {
+        if (isHinata) {
             FloatingPetalsOverlay(
                 petalColor = NeonCyan,
                 petalCount = 14
@@ -539,6 +540,8 @@ fun AppHeader(
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isHinata = LocalAppTheme.current == AppTheme.HINATA
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -554,8 +557,8 @@ fun AppHeader(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .border(1.5.dp, NeonCyan, CircleShape)
-                    .background(Color(0xFF101014)),
+                    .border(1.5.dp, if (isHinata) HinataPurpleLight else NeonCyan, CircleShape)
+                    .background(if (isHinata) HinataSurface else Color(0xFF101014)),
                 contentAlignment = Alignment.Center
             ) {
                 Image(
@@ -569,16 +572,21 @@ fun AppHeader(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = "RUSHU FIN",
-                        style = neonTextStyle(NeonCyan, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, glowRadius = 16f)
+                        style = neonTextStyle(
+                            if (isHinata) HinataPurpleLight else NeonCyan,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            glowRadius = 16f
+                        )
                     )
-                    if (LocalAppTheme.current == AppTheme.HINATA) {
+                    if (isHinata) {
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(text = "🪷", fontSize = 16.sp)
                     }
                 }
                 Text(
                     text = "Personal Finance & Liability Tracking",
-                    color = TextSecondary,
+                    color = if (isHinata) HinataPurpleMuted else TextSecondary,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -607,12 +615,12 @@ fun AppHeader(
                     Icon(
                         imageVector = if (isAdminMode) Icons.Default.LockOpen else Icons.Default.Lock,
                         contentDescription = null,
-                        tint = if (isAdminMode) NeonRed else TextMuted,
+                        tint = if (isAdminMode) NeonRed else (if (isHinata) HinataPurpleLight else TextMuted),
                         modifier = Modifier.size(14.dp)
                     )
                     Text(
                         text = if (isAdminMode) "ADMIN ON" else "TIER 2",
-                        color = if (isAdminMode) NeonRed else TextSecondary,
+                        color = if (isAdminMode) NeonRed else (if (isHinata) HinataPurpleLight else TextSecondary),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -631,7 +639,7 @@ fun AppHeader(
                 Icon(
                     imageVector = if (googleEmail != null) Icons.Default.CloudDone else Icons.Default.Settings,
                     contentDescription = "Settings & Cloud Sync",
-                    tint = if (googleEmail != null) NeonGreen else TextSecondary,
+                    tint = if (googleEmail != null) (if (isHinata) NeonMintGreen else NeonGreen) else (if (isHinata) HinataPurpleLight else TextSecondary),
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -640,7 +648,7 @@ fun AppHeader(
 }
 
 /**
- * Middle Section — Split Balance Row
+ * Middle Section — Split Balance Row with 100% Equal Heights
  */
 @Composable
 fun SplitBalanceRow(
@@ -650,26 +658,29 @@ fun SplitBalanceRow(
     onEditInitialBalance: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isHinata = LocalAppTheme.current == AppTheme.HINATA
     val isDebtFree = uiState.currentLiability <= 0.001
-    val liabilityGlow = if (isDebtFree) NeonGreen else NeonRed
-    val liabilityText = if (isDebtFree) NeonGreen else NeonRed
+    val liabilityGlow = if (isHinata) HinataCardGlow else (if (isDebtFree) NeonGreenGlow else NeonRedGlow)
+    val liabilityNumColor = if (isHinata) RoseDeficit else (if (isDebtFree) NeonGreen else NeonRed)
 
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        // Fixed Initial Card: Exact 118dp height
         GlassBox(
             modifier = (if (showLiabilities) Modifier.weight(1f) else Modifier.fillMaxWidth())
+                .height(118.dp)
                 .clickable { onEditInitialBalance() }
                 .testTag("fixed_initial_balance_card"),
             shape = RoundedCornerShape(20.dp),
-            glowColor = NeonYellow,
+            glowColor = if (isHinata) HinataCardGlow else NeonYellow,
             glowIntensity = 0.4f
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
+                    .fillMaxSize()
+                    .padding(14.dp),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(
@@ -679,88 +690,105 @@ fun SplitBalanceRow(
                 ) {
                     Text(
                         text = "FIXED INITIAL",
-                        style = neonTextStyle(NeonYellow, fontSize = 11.sp, fontWeight = FontWeight.Bold, glowRadius = 10f)
+                        style = neonTextStyle(
+                            if (isHinata) HinataGold else NeonYellow,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            glowRadius = 10f
+                        )
                     )
                     Icon(
                         imageVector = if (isAdminMode) Icons.Default.Edit else Icons.Default.Lock,
                         contentDescription = "Edit with Tier 2",
-                        tint = if (isAdminMode) NeonYellow else TextMuted,
+                        tint = if (isAdminMode) (if (isHinata) HinataGold else NeonYellow) else (if (isHinata) HinataPurpleMuted else TextMuted),
                         modifier = Modifier.size(15.dp)
                     )
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
-
                 Text(
                     text = "${uiState.currencySymbol} ${indianNumber(uiState.initialBalance)}",
-                    style = neonTextStyle(NeonYellow, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, glowRadius = 14f)
+                    style = neonTextStyle(
+                        if (isHinata) HinataGold else NeonYellow,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        glowRadius = 14f
+                    )
                 )
-
-                Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
                     text = if (isAdminMode) "Tap to edit (Admin)" else "Tier 2 protected",
-                    color = TextMuted,
+                    color = if (isHinata) HinataPurpleMuted.copy(alpha = 0.7f) else TextMuted,
                     fontSize = 10.sp
                 )
             }
         }
 
+        // Liabilities Card: Exact 118dp height for 100% equal top & bottom lines
         if (showLiabilities) {
-        GlassBox(
-            modifier = Modifier
-                .weight(1f)
-                .testTag("liabilities_card"),
-            shape = RoundedCornerShape(20.dp),
-            glowColor = liabilityGlow,
-            glowIntensity = 0.45f
-        ) {
-            Column(
+            GlassBox(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.SpaceBetween
+                    .weight(1f)
+                    .height(118.dp)
+                    .testTag("liabilities_card"),
+                shape = RoundedCornerShape(20.dp),
+                glowColor = liabilityGlow,
+                glowIntensity = 0.45f
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(14.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(
-                        text = "LIABILITIES",
-                        style = neonTextStyle(liabilityText, fontSize = 11.sp, fontWeight = FontWeight.Bold, glowRadius = 10f)
-                    )
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = liabilityGlow.copy(alpha = 0.2f),
-                        border = androidx.compose.foundation.BorderStroke(0.5.dp, liabilityGlow.copy(alpha = 0.5f))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = if (isDebtFree) "CLEAR" else "DEBT",
-                            color = liabilityGlow,
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            text = "LIABILITIES",
+                            style = neonTextStyle(
+                                if (isHinata) RoseDeficit else (if (isDebtFree) NeonGreen else NeonRed),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                glowRadius = 10f
+                            )
                         )
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isHinata) HinataPillBg else (if (isDebtFree) NeonGreen.copy(alpha = 0.2f) else NeonRed.copy(alpha = 0.2f)),
+                            border = androidx.compose.foundation.BorderStroke(
+                                0.5.dp,
+                                if (isHinata) HinataPillBorder else (if (isDebtFree) NeonGreen.copy(alpha = 0.5f) else NeonRed.copy(alpha = 0.5f))
+                            )
+                        ) {
+                            Text(
+                                text = if (isDebtFree) "CLEAR" else "DEBT",
+                                color = if (isHinata) HinataPurpleLight else (if (isDebtFree) NeonGreen else NeonRed),
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
                     }
+
+                    Text(
+                        text = "${uiState.currencySymbol} ${indianNumber(uiState.currentLiability)}",
+                        style = neonTextStyle(
+                            liabilityNumColor,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            glowRadius = 14f
+                        )
+                    )
+
+                    Text(
+                        text = "Tracked independently",
+                        color = if (isHinata) HinataPurpleMuted.copy(alpha = 0.7f) else TextMuted,
+                        fontSize = 10.sp
+                    )
                 }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Text(
-                    text = "${uiState.currencySymbol} ${indianNumber(uiState.currentLiability)}",
-                    style = neonTextStyle(liabilityText, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, glowRadius = 14f)
-                )
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Text(
-                    text = "Tracked independently",
-                    color = TextMuted,
-                    fontSize = 10.sp
-                )
             }
-        }
         }
     }
 }
@@ -774,18 +802,18 @@ fun NormalTransactionModule(
     onRecordTransaction: (amount: Double, type: String, description: String, pin: String, onDone: () -> Unit) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isHinata = LocalAppTheme.current == AppTheme.HINATA
     var selectedType by remember { mutableStateOf("INCOME") }
     var amountText by remember { mutableStateOf("") }
     var descriptionText by remember { mutableStateOf("") }
     var tier1PinText by remember { mutableStateOf("") }
 
     val isIncome = selectedType == "INCOME"
-    val accentColor = if (isIncome) NeonGreen else NeonRed
 
     GlassBox(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        glowColor = accentColor.copy(alpha = 0.3f),
+        glowColor = if (isHinata) HinataCardGlow else (if (isIncome) NeonGreenGlow else NeonRedGlow),
         glowIntensity = 0.35f
     ) {
         Column(
@@ -800,22 +828,28 @@ fun NormalTransactionModule(
             ) {
                 Text(
                     text = "RECORD TRANSACTION",
-                    style = neonTextStyle(NeonCyan, fontSize = 13.sp, fontWeight = FontWeight.Bold, glowRadius = 10f)
+                    style = neonTextStyle(
+                        if (isHinata) HinataPurpleLight else NeonCyan,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        glowRadius = 10f
+                    )
                 )
                 Text(
                     text = "Main Financial Ledger",
-                    color = TextMuted,
+                    color = if (isHinata) HinataPurpleMuted else TextMuted,
                     fontSize = 11.sp
                 )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Switch tabs: In Hinata theme, both stay in dark violet surface
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(SurfaceDark)
+                    .background(if (isHinata) HinataSurface else SurfaceDark)
                     .border(1.dp, CardGlassBorder, RoundedCornerShape(12.dp))
                     .padding(3.dp)
             ) {
@@ -823,7 +857,11 @@ fun NormalTransactionModule(
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(if (isIncome) NeonGreen.copy(alpha = 0.22f) else Color.Transparent)
+                        .background(
+                            if (isIncome) {
+                                if (isHinata) HinataPillBg else NeonGreen.copy(alpha = 0.25f)
+                            } else Color.Transparent
+                        )
                         .clickable { selectedType = "INCOME" }
                         .padding(vertical = 10.dp)
                         .testTag("tab_income"),
@@ -831,7 +869,12 @@ fun NormalTransactionModule(
                 ) {
                     Text(
                         text = "+ive INCOME",
-                        style = neonTextStyle(if (isIncome) NeonGreen else TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold, glowRadius = 8f)
+                        style = neonTextStyle(
+                            if (isIncome) (if (isHinata) NeonMintGreen else NeonGreen) else (if (isHinata) HinataPurpleMuted else TextSecondary),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            glowRadius = 8f
+                        )
                     )
                 }
 
@@ -839,7 +882,11 @@ fun NormalTransactionModule(
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(if (!isIncome) NeonRed.copy(alpha = 0.22f) else Color.Transparent)
+                        .background(
+                            if (!isIncome) {
+                                if (isHinata) HinataPillBg else NeonRed.copy(alpha = 0.25f)
+                            } else Color.Transparent
+                        )
                         .clickable { selectedType = "EXPENSE" }
                         .padding(vertical = 10.dp)
                         .testTag("tab_expense"),
@@ -847,7 +894,12 @@ fun NormalTransactionModule(
                 ) {
                     Text(
                         text = "-ive EXPENSE",
-                        style = neonTextStyle(if (!isIncome) NeonRed else TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold, glowRadius = 8f)
+                        style = neonTextStyle(
+                            if (!isIncome) (if (isHinata) RoseDeficit else NeonRed) else (if (isHinata) HinataPurpleMuted else TextSecondary),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            glowRadius = 8f
+                        )
                     )
                 }
             }
@@ -862,11 +914,11 @@ fun NormalTransactionModule(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = accentColor,
+                    focusedBorderColor = if (isHinata) HinataPurpleLight else (if (isIncome) NeonGreen else NeonRed),
                     unfocusedBorderColor = CardGlassBorder,
                     focusedTextColor = TextPrimary,
                     unfocusedTextColor = TextPrimary,
-                    cursorColor = accentColor
+                    cursorColor = if (isHinata) HinataPurpleLight else NeonCyan
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -883,11 +935,11 @@ fun NormalTransactionModule(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Next),
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = accentColor,
+                    focusedBorderColor = if (isHinata) HinataPurpleLight else (if (isIncome) NeonGreen else NeonRed),
                     unfocusedBorderColor = CardGlassBorder,
                     focusedTextColor = TextPrimary,
                     unfocusedTextColor = TextPrimary,
-                    cursorColor = accentColor
+                    cursorColor = if (isHinata) HinataPurpleLight else NeonCyan
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -905,14 +957,18 @@ fun NormalTransactionModule(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword, imeAction = ImeAction.Done),
                 singleLine = true,
                 leadingIcon = {
-                    Icon(Icons.Default.Security, contentDescription = null, tint = accentColor)
+                    Icon(
+                        Icons.Default.Security,
+                        contentDescription = null,
+                        tint = if (isHinata) HinataPurpleMuted else (if (isIncome) NeonGreen else NeonRed)
+                    )
                 },
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = accentColor,
+                    focusedBorderColor = if (isHinata) HinataPurpleLight else (if (isIncome) NeonGreen else NeonRed),
                     unfocusedBorderColor = CardGlassBorder,
                     focusedTextColor = TextPrimary,
                     unfocusedTextColor = TextPrimary,
-                    cursorColor = accentColor
+                    cursorColor = if (isHinata) HinataPurpleLight else NeonCyan
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -921,6 +977,7 @@ fun NormalTransactionModule(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Submit Button: Cohesive Obsidian Violet in Hinata Theme!
             Button(
                 onClick = {
                     val amt = amountText.toDoubleOrNull() ?: 0.0
@@ -930,7 +987,10 @@ fun NormalTransactionModule(
                         tier1PinText = ""
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = accentColor),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isHinata) HinataButtonBg else (if (isIncome) NeonGreen else NeonRed)
+                ),
+                border = if (isHinata) androidx.compose.foundation.BorderStroke(1.dp, HinataPillBorder) else null,
                 shape = RoundedCornerShape(14.dp),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -939,7 +999,7 @@ fun NormalTransactionModule(
             ) {
                 Text(
                     text = if (isIncome) "RECORD INCOME (+)" else "RECORD EXPENSE (-)",
-                    color = CanvasBackground,
+                    color = if (isHinata) HinataPurpleLight else CanvasBackground,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp
                 )
@@ -957,18 +1017,18 @@ fun LiabilityManagementModule(
     onRecordLiability: (amount: Double, actionType: String, description: String, pin: String, onDone: () -> Unit) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isHinata = LocalAppTheme.current == AppTheme.HINATA
     var selectedAction by remember { mutableStateOf("ADD_LIABILITY") }
     var amountText by remember { mutableStateOf("") }
     var descriptionText by remember { mutableStateOf("") }
     var tier1PinText by remember { mutableStateOf("") }
 
     val isAdding = selectedAction == "ADD_LIABILITY"
-    val accentColor = if (isAdding) NeonRed else NeonCyan
 
     GlassBox(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        glowColor = accentColor.copy(alpha = 0.3f),
+        glowColor = if (isHinata) HinataCardGlow else (if (isAdding) NeonRedGlow else NeonCyanGlow),
         glowIntensity = 0.35f
     ) {
         Column(
@@ -984,11 +1044,16 @@ fun LiabilityManagementModule(
                 Column {
                     Text(
                         text = "INDEPENDENT LIABILITY MODULE",
-                        style = neonTextStyle(accentColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, glowRadius = 10f)
+                        style = neonTextStyle(
+                            if (isHinata) HinataPurpleLight else (if (isAdding) NeonRed else NeonCyan),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            glowRadius = 10f
+                        )
                     )
                     Text(
                         text = "Does NOT deduct or affect main live balance",
-                        color = TextMuted,
+                        color = if (isHinata) HinataPurpleMuted else TextMuted,
                         fontSize = 10.sp
                     )
                 }
@@ -996,11 +1061,12 @@ fun LiabilityManagementModule(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Switch tabs
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(SurfaceDark)
+                    .background(if (isHinata) HinataSurface else SurfaceDark)
                     .border(1.dp, CardGlassBorder, RoundedCornerShape(12.dp))
                     .padding(3.dp)
             ) {
@@ -1008,7 +1074,11 @@ fun LiabilityManagementModule(
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(if (isAdding) NeonRed.copy(alpha = 0.22f) else Color.Transparent)
+                        .background(
+                            if (isAdding) {
+                                if (isHinata) HinataPillBg else NeonRed.copy(alpha = 0.25f)
+                            } else Color.Transparent
+                        )
                         .clickable { selectedAction = "ADD_LIABILITY" }
                         .padding(vertical = 10.dp)
                         .testTag("tab_add_liability"),
@@ -1016,7 +1086,12 @@ fun LiabilityManagementModule(
                 ) {
                     Text(
                         text = "+ ADD LIABILITY",
-                        style = neonTextStyle(if (isAdding) NeonRed else TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold, glowRadius = 8f)
+                        style = neonTextStyle(
+                            if (isAdding) (if (isHinata) RoseDeficit else NeonRed) else (if (isHinata) HinataPurpleMuted else TextSecondary),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            glowRadius = 8f
+                        )
                     )
                 }
 
@@ -1024,7 +1099,11 @@ fun LiabilityManagementModule(
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(if (!isAdding) NeonCyan.copy(alpha = 0.22f) else Color.Transparent)
+                        .background(
+                            if (!isAdding) {
+                                if (isHinata) HinataPillBg else NeonCyan.copy(alpha = 0.25f)
+                            } else Color.Transparent
+                        )
                         .clickable { selectedAction = "PAY_LIABILITY" }
                         .padding(vertical = 10.dp)
                         .testTag("tab_pay_liability"),
@@ -1032,7 +1111,12 @@ fun LiabilityManagementModule(
                 ) {
                     Text(
                         text = "- PAY/REDUCE DEBT",
-                        style = neonTextStyle(if (!isAdding) NeonCyan else TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold, glowRadius = 8f)
+                        style = neonTextStyle(
+                            if (!isAdding) (if (isHinata) NeonMintGreen else NeonCyan) else (if (isHinata) HinataPurpleMuted else TextSecondary),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            glowRadius = 8f
+                        )
                     )
                 }
             }
@@ -1047,11 +1131,11 @@ fun LiabilityManagementModule(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = accentColor,
+                    focusedBorderColor = if (isHinata) HinataPurpleLight else (if (isAdding) NeonRed else NeonCyan),
                     unfocusedBorderColor = CardGlassBorder,
                     focusedTextColor = TextPrimary,
                     unfocusedTextColor = TextPrimary,
-                    cursorColor = accentColor
+                    cursorColor = if (isHinata) HinataPurpleLight else NeonCyan
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1068,11 +1152,11 @@ fun LiabilityManagementModule(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Next),
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = accentColor,
+                    focusedBorderColor = if (isHinata) HinataPurpleLight else (if (isAdding) NeonRed else NeonCyan),
                     unfocusedBorderColor = CardGlassBorder,
                     focusedTextColor = TextPrimary,
                     unfocusedTextColor = TextPrimary,
-                    cursorColor = accentColor
+                    cursorColor = if (isHinata) HinataPurpleLight else NeonCyan
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1090,14 +1174,18 @@ fun LiabilityManagementModule(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword, imeAction = ImeAction.Done),
                 singleLine = true,
                 leadingIcon = {
-                    Icon(Icons.Default.Security, contentDescription = null, tint = accentColor)
+                    Icon(
+                        Icons.Default.Security,
+                        contentDescription = null,
+                        tint = if (isHinata) HinataPurpleMuted else (if (isAdding) NeonRed else NeonCyan)
+                    )
                 },
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = accentColor,
+                    focusedBorderColor = if (isHinata) HinataPurpleLight else (if (isAdding) NeonRed else NeonCyan),
                     unfocusedBorderColor = CardGlassBorder,
                     focusedTextColor = TextPrimary,
                     unfocusedTextColor = TextPrimary,
-                    cursorColor = accentColor
+                    cursorColor = if (isHinata) HinataPurpleLight else NeonCyan
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1106,6 +1194,7 @@ fun LiabilityManagementModule(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Submit Button: Cohesive Obsidian Violet in Hinata Theme!
             Button(
                 onClick = {
                     val amt = amountText.toDoubleOrNull() ?: 0.0
@@ -1115,7 +1204,10 @@ fun LiabilityManagementModule(
                         tier1PinText = ""
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = accentColor),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isHinata) HinataButtonBg else (if (isAdding) NeonRed else NeonCyan)
+                ),
+                border = if (isHinata) androidx.compose.foundation.BorderStroke(1.dp, HinataPillBorder) else null,
                 shape = RoundedCornerShape(14.dp),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1124,7 +1216,7 @@ fun LiabilityManagementModule(
             ) {
                 Text(
                     text = if (isAdding) "RECORD NEW DEBT (+)" else "RECORD DEBT PAYMENT (-)",
-                    color = CanvasBackground,
+                    color = if (isHinata) HinataPurpleLight else CanvasBackground,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp
                 )
@@ -1149,6 +1241,7 @@ fun AuditLedgersSection(
     onDeleteLiability: (LiabilityEntity) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isHinata = LocalAppTheme.current == AppTheme.HINATA
     var selectedTab by remember { mutableIntStateOf(0) }
 
     Column(modifier = modifier.fillMaxWidth()) {
@@ -1159,7 +1252,12 @@ fun AuditLedgersSection(
         ) {
             Text(
                 text = "PERMANENT AUDIT LEDGERS",
-                style = neonTextStyle(NeonCyan, fontSize = 13.sp, fontWeight = FontWeight.Bold, glowRadius = 10f)
+                style = neonTextStyle(
+                    if (isHinata) HinataPurpleLight else NeonCyan,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    glowRadius = 10f
+                )
             )
             Surface(
                 shape = RoundedCornerShape(12.dp),
@@ -1168,7 +1266,7 @@ fun AuditLedgersSection(
             ) {
                 Text(
                     text = if (isAdminMode) "ADMIN OVERRIDE ACTIVE" else "IMMUTABLE AUDIT",
-                    color = if (isAdminMode) NeonRed else TextSecondary,
+                    color = if (isAdminMode) NeonRed else (if (isHinata) HinataPurpleLight else TextSecondary),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
@@ -1179,52 +1277,56 @@ fun AuditLedgersSection(
         Spacer(modifier = Modifier.height(10.dp))
 
         if (showLiabilities) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(SurfaceDark)
-                .border(1.dp, CardGlassBorder, RoundedCornerShape(12.dp))
-                .padding(4.dp)
-        ) {
-            Box(
+            Row(
                 modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(if (selectedTab == 0) CardGlass else Color.Transparent)
-                    .clickable { selectedTab = 0 }
-                    .padding(vertical = 8.dp)
-                    .testTag("tab_main_ledger"),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (isHinata) HinataSurface else SurfaceDark)
+                    .border(1.dp, CardGlassBorder, RoundedCornerShape(12.dp))
+                    .padding(4.dp)
             ) {
-                Text(
-                    text = "Main Ledger (${transactions.size})",
-                    color = if (selectedTab == 0) NeonGreen else TextSecondary,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(
+                            if (selectedTab == 0) (if (isHinata) HinataPillBg else CardGlass) else Color.Transparent
+                        )
+                        .clickable { selectedTab = 0 }
+                        .padding(vertical = 8.dp)
+                        .testTag("tab_main_ledger"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Main Ledger (${transactions.size})",
+                        color = if (selectedTab == 0) (if (isHinata) NeonMintGreen else NeonGreen) else (if (isHinata) HinataPurpleMuted else TextSecondary),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(
+                            if (selectedTab == 1) (if (isHinata) HinataPillBg else CardGlass) else Color.Transparent
+                        )
+                        .clickable { selectedTab = 1 }
+                        .padding(vertical = 8.dp)
+                        .testTag("tab_liability_ledger"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Liability Ledger (${liabilities.size})",
+                        color = if (selectedTab == 1) (if (isHinata) HinataPurpleLight else NeonCyan) else (if (isHinata) HinataPurpleMuted else TextSecondary),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
 
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(if (selectedTab == 1) CardGlass else Color.Transparent)
-                    .clickable { selectedTab = 1 }
-                    .padding(vertical = 8.dp)
-                    .testTag("tab_liability_ledger"),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Liability Ledger (${liabilities.size})",
-                    color = if (selectedTab == 1) NeonCyan else TextSecondary,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(12.dp))
         }
 
         val effectiveTab = if (showLiabilities) selectedTab else 0
@@ -1274,13 +1376,14 @@ fun TransactionItemCard(
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isHinata = LocalAppTheme.current == AppTheme.HINATA
     val isIncome = transaction.type.equals("INCOME", ignoreCase = true)
-    val itemColor = if (isIncome) NeonGreen else NeonRed
+    val amountColor = if (isIncome) (if (isHinata) NeonMintGreen else NeonGreen) else (if (isHinata) RoseDeficit else NeonRed)
 
     GlassBox(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
-        glowColor = itemColor.copy(alpha = 0.25f),
+        glowColor = if (isHinata) HinataCardGlow else amountColor.copy(alpha = 0.25f),
         glowIntensity = 0.25f
     ) {
         Row(
@@ -1300,20 +1403,25 @@ fun TransactionItemCard(
                         .width(3.dp)
                         .height(36.dp)
                         .clip(CircleShape)
-                        .background(itemColor)
+                        .background(if (isHinata) HinataPurpleLight else amountColor)
                 )
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = transaction.description,
-                        style = neonTextStyle(itemColor, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, glowRadius = 8f),
+                        style = neonTextStyle(
+                            if (isHinata) HinataPurpleLight else amountColor,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            glowRadius = 8f
+                        ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = "${transaction.dateString} • ${transaction.timeString}",
-                        color = TextMuted,
+                        color = if (isHinata) HinataPurpleMuted else TextMuted,
                         fontSize = 11.sp
                     )
                 }
@@ -1325,7 +1433,7 @@ fun TransactionItemCard(
             ) {
                 Text(
                     text = "${if (isIncome) "+" else "-"}$currencySymbol ${indianNumber(transaction.amount)}",
-                    style = neonTextStyle(itemColor, fontSize = 16.sp, fontWeight = FontWeight.Bold, glowRadius = 10f)
+                    style = neonTextStyle(amountColor, fontSize = 16.sp, fontWeight = FontWeight.Bold, glowRadius = 10f)
                 )
 
                 if (isAdminMode) {
@@ -1350,13 +1458,14 @@ fun LiabilityItemCard(
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isHinata = LocalAppTheme.current == AppTheme.HINATA
     val isAdd = liability.actionType.equals("ADD_LIABILITY", ignoreCase = true)
-    val itemColor = if (isAdd) NeonRed else NeonCyan
+    val amountColor = if (isAdd) (if (isHinata) RoseDeficit else NeonRed) else (if (isHinata) NeonMintGreen else NeonCyan)
 
     GlassBox(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
-        glowColor = itemColor.copy(alpha = 0.25f),
+        glowColor = if (isHinata) HinataCardGlow else amountColor.copy(alpha = 0.25f),
         glowIntensity = 0.25f
     ) {
         Row(
@@ -1376,14 +1485,19 @@ fun LiabilityItemCard(
                         .width(3.dp)
                         .height(36.dp)
                         .clip(CircleShape)
-                        .background(itemColor)
+                        .background(if (isHinata) HinataPurpleLight else amountColor)
                 )
 
                 Column(modifier = Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
                             text = liability.description,
-                            style = neonTextStyle(itemColor, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, glowRadius = 8f),
+                            style = neonTextStyle(
+                                if (isHinata) HinataPurpleLight else amountColor,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                glowRadius = 8f
+                            ),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -1391,7 +1505,7 @@ fun LiabilityItemCard(
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = "${if (isAdd) "Added Debt" else "Payment Made"} • ${liability.dateString} • ${liability.timeString}",
-                        color = TextMuted,
+                        color = if (isHinata) HinataPurpleMuted else TextMuted,
                         fontSize = 11.sp
                     )
                 }
@@ -1403,7 +1517,7 @@ fun LiabilityItemCard(
             ) {
                 Text(
                     text = "${if (isAdd) "+" else "-"}$currencySymbol ${indianNumber(liability.amount)}",
-                    style = neonTextStyle(itemColor, fontSize = 16.sp, fontWeight = FontWeight.Bold, glowRadius = 10f)
+                    style = neonTextStyle(amountColor, fontSize = 16.sp, fontWeight = FontWeight.Bold, glowRadius = 10f)
                 )
 
                 if (isAdminMode) {
