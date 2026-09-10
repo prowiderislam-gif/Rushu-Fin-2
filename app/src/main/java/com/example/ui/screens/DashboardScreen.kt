@@ -126,6 +126,7 @@ import com.example.ui.components.FloatingPetalsOverlay
 import com.example.ui.components.GlowingPayoffProgressBar
 import com.example.ui.components.ThemedDivider
 import com.example.ui.components.neonTextStyle
+import com.example.ui.components.HinataMainBalanceCard
 import com.example.ui.theme.CanvasBackground
 import com.example.ui.theme.CardGlass
 import com.example.ui.theme.CardGlassBorder
@@ -204,10 +205,6 @@ fun DashboardScreen(
         }
     }
 
-    // Separate launcher for Tier 2 password recovery re-authentication —
-    // kept distinct from the normal link/switch-account launcher so its
-    // result is checked against the already-linked account instead of
-    // triggering the merge/replace/discard choice dialog.
     val passwordRecoveryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -266,7 +263,7 @@ fun DashboardScreen(
                 )
             }
 
-            // Top Section — Main Live Balance Box
+            // Top Section — Main Live Balance Box with Hinata
             item {
                 HinataMainBalanceCard(
                     liveBalance = uiState.liveBalance,
@@ -276,7 +273,7 @@ fun DashboardScreen(
                 )
             }
 
-            // Middle Section — Split Balance Row (Yellow Glass Fixed vs Dynamic Liability)
+            // Middle Section — Split Balance Row
             item {
                 SplitBalanceRow(
                     uiState = uiState,
@@ -325,7 +322,7 @@ fun DashboardScreen(
                 }
             }
 
-            // Dual Permanent Ledgers (Main Financial Ledger & Independent Liability Ledger)
+            // Dual Permanent Ledgers
             item {
                 AuditLedgersSection(
                     transactions = transactions,
@@ -345,7 +342,7 @@ fun DashboardScreen(
             }
         }
 
-        if (uiState.themeMode == AppTheme.SAKURA_BLOOM || uiState.themeMode == AppTheme.MOONLIT_PURPLE) {
+        if (uiState.themeMode == AppTheme.SAKURA_BLOOM || uiState.themeMode == AppTheme.MOONLIT_PURPLE || uiState.themeMode == AppTheme.HINATA) {
             FloatingPetalsOverlay(
                 petalColor = NeonCyan,
                 petalCount = 14
@@ -527,11 +524,11 @@ fun DashboardScreen(
             }
         )
     }
-    } // end CompositionLocalProvider(LocalAppTheme, LocalDensity)
+    }
 }
 
 /**
- * App Header with Branding, Admin Mode status, and Cloud Sync toggle.
+ * App Header with Branding, Admin Mode status, and Settings.
  */
 @Composable
 fun AppHeader(
@@ -549,7 +546,6 @@ fun AppHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // App Logo & Title
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -578,6 +574,7 @@ fun AppHeader(
                     val themeAccentEmoji = when (LocalAppTheme.current) {
                         AppTheme.GOLDEN_HIVE -> "\uD83D\uDC1D"
                         AppTheme.SAKURA_BLOOM, AppTheme.MOONLIT_PURPLE -> "\uD83C\uDF38"
+                        AppTheme.HINATA -> "🪷"
                         else -> null
                     }
                     if (themeAccentEmoji != null) {
@@ -594,12 +591,10 @@ fun AppHeader(
             }
         }
 
-        // Action Buttons: Admin Mode Chip & Settings
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Admin Mode Chip
             Surface(
                 onClick = onAdminToggleClick,
                 shape = RoundedCornerShape(20.dp),
@@ -630,7 +625,6 @@ fun AppHeader(
                 }
             }
 
-            // Settings & Google Drive Sync Button
             IconButton(
                 onClick = onSettingsClick,
                 modifier = Modifier
@@ -652,164 +646,7 @@ fun AppHeader(
 }
 
 /**
- * Top Section — Main Live Balance Box:
- * A large, prominent glassmorphic box spanning full width at the very top.
- * Features dynamic Green inner glow if balance >= 0, and Red inner glow if balance < 0.
- * Displays calculated live balance: Initial Fixed Amount + Income - Expenses.
- * Strictly non-editable directly.
- */
-@Composable
-fun HinataMainBalanceCard(
-    liveBalance: Double,
-    totalIncome: Double,
-    totalExpenses: Double,
-    formulaText: String,
-    modifier: Modifier = Modifier
-) {
-    val isPositive = liveBalance >= 0
-    val glowColor = if (isPositive) NeonGreen else NeonRed
-    val textColor = if (isPositive) NeonGreen else NeonRed
-
-    GlassBox(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        glowColor = glowColor,
-        glowIntensity = 0.55f
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "MAIN LIVE BALANCE",
-                    style = neonTextStyle(
-                        glowColor,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        glowRadius = 10f
-                    )
-                )
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = glowColor.copy(alpha = 0.15f),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, glowColor.copy(alpha = 0.5f))
-                ) {
-                    Text(
-                        text = if (isPositive) "SURPLUS" else "DEFICIT",
-                        color = glowColor,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            Text(
-                text = "₹ ${indianNumber(liveBalance)}",
-                style = neonTextStyle(
-                    textColor,
-                    fontSize = 36.sp,
-                    fontWeight = FontWeight.Black,
-                    glowRadius = 24f
-                ),
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = formulaText,
-                color = TextSecondary,
-                fontSize = 11.sp,
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            ThemedDivider()
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(26.dp)
-                            .clip(CircleShape)
-                            .background(NeonGreen.copy(alpha = 0.15f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowUpward,
-                            contentDescription = null,
-                            tint = NeonGreen,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                    Column {
-                        Text(text = "Total Income", color = TextMuted, fontSize = 10.sp)
-                        Text(
-                            text = "+₹${indianNumber(totalIncome)}",
-                            color = NeonGreen,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(26.dp)
-                            .clip(CircleShape)
-                            .background(NeonRed.copy(alpha = 0.15f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowDownward,
-                            contentDescription = null,
-                            tint = NeonRed,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                    Column {
-                        Text(text = "Total Expenses", color = TextMuted, fontSize = 10.sp)
-                        Text(
-                            text = "-₹${indianNumber(totalExpenses)}",
-                            color = NeonRed,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-/**
- * Middle Section — Split Balance Row:
- * Two equal-half glass boxes side-by-side:
- * Left Box (Yellow Glass - Fixed Initial Balance): Inner glowing yellow light, stores baseline starting funds.
- * Right Box (Dynamic Red/Green Glass - Liabilities): Red inner glow when liability > 0, turns Green once liability reaches 0.
+ * Middle Section — Split Balance Row
  */
 @Composable
 fun SplitBalanceRow(
@@ -827,7 +664,6 @@ fun SplitBalanceRow(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Left Box: Yellow Glass (Fixed Initial Balance)
         GlassBox(
             modifier = (if (showLiabilities) Modifier.weight(1f) else Modifier.fillMaxWidth())
                 .clickable { onEditInitialBalance() }
@@ -876,7 +712,6 @@ fun SplitBalanceRow(
             }
         }
 
-        // Right Box: Dynamic Red/Green Glass (Interest & Liabilities) — hidden when liabilities are toggled off
         if (showLiabilities) {
         GlassBox(
             modifier = Modifier
@@ -937,10 +772,7 @@ fun SplitBalanceRow(
 }
 
 /**
- * Lower-Middle Section — Normal Income & Expense Transactions Input Card:
- * Partitioned input cards for +ive (Income) and -ive (Expense).
- * Requires both amount and mandatory short text description.
- * Requires Tier 1 Password to record.
+ * Normal Income & Expense Transactions Input Card
  */
 @Composable
 fun NormalTransactionModule(
@@ -948,14 +780,13 @@ fun NormalTransactionModule(
     onRecordTransaction: (amount: Double, type: String, description: String, pin: String, onDone: () -> Unit) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var selectedType by remember { mutableStateOf("INCOME") } // "INCOME" or "EXPENSE"
+    var selectedType by remember { mutableStateOf("INCOME") }
     var amountText by remember { mutableStateOf("") }
     var descriptionText by remember { mutableStateOf("") }
     var tier1PinText by remember { mutableStateOf("") }
 
     val isIncome = selectedType == "INCOME"
     val accentColor = if (isIncome) NeonGreen else NeonRed
-    val accentGlow = if (isIncome) NeonGreenGlow else NeonRedGlow
 
     GlassBox(
         modifier = modifier.fillMaxWidth(),
@@ -986,7 +817,6 @@ fun NormalTransactionModule(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Switcher: +ive Income vs -ive Expense
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1030,7 +860,6 @@ fun NormalTransactionModule(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Amount Input
             OutlinedTextField(
                 value = amountText,
                 onValueChange = { amountText = it },
@@ -1052,7 +881,6 @@ fun NormalTransactionModule(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Description Input (Mandatory)
             OutlinedTextField(
                 value = descriptionText,
                 onValueChange = { descriptionText = it },
@@ -1074,7 +902,6 @@ fun NormalTransactionModule(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Tier 1 PIN Input
             OutlinedTextField(
                 value = tier1PinText,
                 onValueChange = { tier1PinText = it },
@@ -1100,7 +927,6 @@ fun NormalTransactionModule(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Submit Button
             Button(
                 onClick = {
                     val amt = amountText.toDoubleOrNull() ?: 0.0
@@ -1129,11 +955,7 @@ fun NormalTransactionModule(
 }
 
 /**
- * Bottom Section — Independent Liability Management Module:
- * Sleekly separated from main transactions so it does NOT clutter the screen.
- * Allows adding new liabilities (increasing debt balance) or making liability payments/deductions (decreasing debt balance).
- * Requires a mandatory short text description and Tier 1 Password for every liability entry/payment.
- * CRITICAL LOGIC RULE: Liability balances and liability payments MUST be stored, tracked, and calculated entirely SEPARATELY.
+ * Bottom Section — Independent Liability Management Module
  */
 @Composable
 fun LiabilityManagementModule(
@@ -1141,7 +963,7 @@ fun LiabilityManagementModule(
     onRecordLiability: (amount: Double, actionType: String, description: String, pin: String, onDone: () -> Unit) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var selectedAction by remember { mutableStateOf("ADD_LIABILITY") } // "ADD_LIABILITY" or "PAY_LIABILITY"
+    var selectedAction by remember { mutableStateOf("ADD_LIABILITY") }
     var amountText by remember { mutableStateOf("") }
     var descriptionText by remember { mutableStateOf("") }
     var tier1PinText by remember { mutableStateOf("") }
@@ -1180,7 +1002,6 @@ fun LiabilityManagementModule(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Switcher: Add Liability (+Debt) vs Pay Liability (-Debt)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1224,7 +1045,6 @@ fun LiabilityManagementModule(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Amount Input
             OutlinedTextField(
                 value = amountText,
                 onValueChange = { amountText = it },
@@ -1246,7 +1066,6 @@ fun LiabilityManagementModule(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Description Input
             OutlinedTextField(
                 value = descriptionText,
                 onValueChange = { descriptionText = it },
@@ -1268,7 +1087,6 @@ fun LiabilityManagementModule(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Tier 1 PIN
             OutlinedTextField(
                 value = tier1PinText,
                 onValueChange = { tier1PinText = it },
@@ -1322,12 +1140,7 @@ fun LiabilityManagementModule(
 }
 
 /**
- * Dual Permanent Ledgers:
- * Ledger 1: Main Financial Ledger (Date, Time, Amount, Type, Description). Color-coded:
- *   +ive Income in vibrant Glowing Neon Green
- *   -ive Expense in vibrant Glowing Neon Red
- * Ledger 2: Independent Liability Ledger (Date, Time, Amount, Action Type, Description).
- * Immutability by default; Admin Mode (Tier 2) allows Edit & Delete!
+ * Dual Permanent Ledgers
  */
 @Composable
 fun AuditLedgersSection(
@@ -1342,7 +1155,7 @@ fun AuditLedgersSection(
     onDeleteLiability: (LiabilityEntity) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) } // 0: Main Ledger, 1: Liability Ledger
+    var selectedTab by remember { mutableIntStateOf(0) }
 
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
@@ -1371,7 +1184,6 @@ fun AuditLedgersSection(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Ledger Switcher Tabs — only shown when there's a liability ledger to switch to
         if (showLiabilities) {
         Row(
             modifier = Modifier
@@ -1424,7 +1236,6 @@ fun AuditLedgersSection(
         val effectiveTab = if (showLiabilities) selectedTab else 0
 
         if (effectiveTab == 0) {
-            // Main Ledger Entries
             if (transactions.isEmpty()) {
                 EmptyLedgerCard(message = "No transactions logged yet. Add your first income or expense above!")
             } else {
@@ -1441,7 +1252,6 @@ fun AuditLedgersSection(
                 }
             }
         } else {
-            // Liability Ledger Entries
             if (liabilities.isEmpty()) {
                 EmptyLedgerCard(message = "No liability records found. Record borrowings or debt payments above!")
             } else {
@@ -1472,7 +1282,6 @@ fun TransactionItemCard(
 ) {
     val isIncome = transaction.type.equals("INCOME", ignoreCase = true)
     val itemColor = if (isIncome) NeonGreen else NeonRed
-    val itemGlow = if (isIncome) NeonGreenGlow else NeonRedGlow
 
     GlassBox(
         modifier = modifier.fillMaxWidth(),
@@ -1492,7 +1301,6 @@ fun TransactionItemCard(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                // Sleek glowing indicator line
                 Box(
                     modifier = Modifier
                         .width(3.dp)
@@ -1641,10 +1449,6 @@ fun EmptyLedgerCard(message: String) {
     }
 }
 
-// ----------------------------------------------------
-// Dialogs: Security Tiers, Settings, Cloud Sync, Edits
-// ----------------------------------------------------
-
 @Composable
 fun SyncChoiceDialog(
     onMerge: () -> Unit,
@@ -1747,7 +1551,6 @@ fun ExportTransactionsDialog(
         },
         text = {
             Column {
-                // Include liabilities toggle
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -1765,7 +1568,6 @@ fun ExportTransactionsDialog(
                 HorizontalDivider(color = CardGlassBorder)
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // From-beginning toggle
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -1856,7 +1658,6 @@ fun ExportTransactionsDialog(
             onDismissRequest = { showEndPicker = false },
             confirmButton = {
                 TextButton(onClick = {
-                    // Push to end-of-day so the selected day is fully included.
                     val millis = state.selectedDateMillis
                     endDateMillis = millis?.plus(23 * 60 * 60 * 1000L + 59 * 60 * 1000L + 59 * 1000L)
                     showEndPicker = false
@@ -2289,10 +2090,6 @@ fun EditInitialBalanceDialog(
     )
 }
 
-/**
- * A single selectable row in the App Theme picker — tap anywhere on the
- * row to select that theme.
- */
 @Composable
 fun ThemeOptionRow(
     title: String,
@@ -2365,7 +2162,9 @@ fun SettingsAndCloudSyncDialog(
         },
         text = {
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 // Google Account Section
@@ -2593,6 +2392,13 @@ fun SettingsAndCloudSyncDialog(
                             description = "Violet chrome with green balance, gold initial, pink liability.",
                             selected = uiState.themeMode == AppTheme.MOONLIT_PURPLE,
                             onClick = { onSelectTheme(AppTheme.MOONLIT_PURPLE) }
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        ThemeOptionRow(
+                            title = "🪷 Hinata Hyuga (Obsidian & Neon)",
+                            description = "Deep obsidian dark theme with lavender accents & Byakugan glows.",
+                            selected = uiState.themeMode == AppTheme.HINATA,
+                            onClick = { onSelectTheme(AppTheme.HINATA) }
                         )
                     }
                 }
