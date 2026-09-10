@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
 import com.example.ui.theme.*
+import com.example.util.indianNumber
 
 @Composable
 fun HinataMainBalanceCard(
@@ -34,57 +35,71 @@ fun HinataMainBalanceCard(
     isSurplus: Boolean = liveBalance >= 0,
     modifier: Modifier = Modifier
 ) {
-    // Outer Box allows Hinata to extend above the top boundary
+    val isHinataTheme = LocalAppTheme.current == AppTheme.HINATA
+
+    // When Hinata theme is active, add top space for her hair and head to overflow naturally
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(top = 28.dp)
+            .padding(top = if (isHinataTheme) 34.dp else 0.dp)
     ) {
-        // Main Card Box
+        // Main Card Container
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .shadow(
-                    elevation = 16.dp,
+                    elevation = if (isHinataTheme) 16.dp else 8.dp,
                     shape = RoundedCornerShape(24.dp),
-                    ambientColor = HinataCardGlow,
-                    spotColor = HinataCardGlow
+                    ambientColor = if (isHinataTheme) HinataCardGlow else Color.Transparent,
+                    spotColor = if (isHinataTheme) HinataCardGlow else Color.Transparent
                 )
                 .border(
                     width = 1.dp,
-                    color = HinataCardBorder,
+                    color = if (isHinataTheme) HinataCardBorder else CardGlassBorder,
                     shape = RoundedCornerShape(24.dp)
                 ),
             shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = HinataSurface)
+            colors = CardDefaults.cardColors(
+                containerColor = if (isHinataTheme) HinataSurface else CardGlass
+            )
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(20.dp)
             ) {
-                // Header Row (Constrained to 58% width to guarantee ZERO overlap)
+                // Header Row (Constrained to 52% width in Hinata theme so text never touches her)
                 Row(
-                    modifier = Modifier.fillMaxWidth(0.58f),
+                    modifier = if (isHinataTheme) Modifier.fillMaxWidth(0.52f) else Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
                         text = "MAIN LIVE BALANCE",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp,
-                        color = Color.White.copy(alpha = 0.95f)
+                        color = if (isHinataTheme) HinataPurpleLight else TextSecondary
                     )
 
                     // Surplus / Deficit Pill Badge
                     Box(
                         modifier = Modifier
                             .clip(CircleShape)
-                            .background(if (isSurplus) HinataPillBg else Color(0x804C0519))
+                            .background(
+                                if (isHinataTheme) {
+                                    if (isSurplus) HinataPillBg else Color(0x804C0519)
+                                } else {
+                                    (if (isSurplus) NeonGreen else NeonRed).copy(alpha = 0.15f)
+                                }
+                            )
                             .border(
                                 1.dp,
-                                if (isSurplus) HinataPillBorder else Color(0x80FB7185),
+                                if (isHinataTheme) {
+                                    if (isSurplus) HinataPillBorder else Color(0x80FB7185)
+                                } else {
+                                    (if (isSurplus) NeonGreen else NeonRed).copy(alpha = 0.4f)
+                                },
                                 CircleShape
                             )
                             .padding(horizontal = 8.dp, vertical = 2.dp)
@@ -93,42 +108,47 @@ fun HinataMainBalanceCard(
                             text = if (isSurplus) "SURPLUS" else "DEFICIT",
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (isSurplus) HinataPurpleLight else Color(0xFFFECDD3)
+                            color = if (isHinataTheme) {
+                                if (isSurplus) HinataPurpleLight else Color(0xFFFECDD3)
+                            } else {
+                                if (isSurplus) NeonGreen else NeonRed
+                            }
                         )
                     }
                 }
 
-                Text(
-                    text = "現在の残高",
-                    fontSize = 10.sp,
-                    color = HinataPurpleMuted.copy(alpha = 0.7f),
-                    modifier = Modifier.padding(top = 2.dp)
-                )
+                if (isHinataTheme) {
+                    Text(
+                        text = "現在の残高",
+                        fontSize = 10.sp,
+                        color = HinataPurpleMuted.copy(alpha = 0.7f),
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(14.dp))
 
                 // Big Live Balance Number
                 Text(
-                    text = "₹ %.2f".format(liveBalance),
-                    fontSize = 34.sp,
+                    text = "₹ ${indianNumber(liveBalance)}",
+                    fontSize = 36.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = NeonMintGreen,
-                    modifier = Modifier.fillMaxWidth(0.58f)
+                    color = if (isHinataTheme) NeonMintGreen else (if (isSurplus) NeonGreen else NeonRed),
+                    modifier = if (isHinataTheme) Modifier.fillMaxWidth(0.52f) else Modifier.fillMaxWidth()
                 )
 
                 Text(
                     text = formulaText,
                     fontSize = 10.sp,
                     fontFamily = FontFamily.Monospace,
-                    color = HinataPurpleLight.copy(alpha = 0.65f),
+                    color = if (isHinataTheme) HinataPurpleLight.copy(alpha = 0.65f) else TextMuted,
                     maxLines = 2,
-                    modifier = Modifier
-                        .fillMaxWidth(0.58f)
+                    modifier = (if (isHinataTheme) Modifier.fillMaxWidth(0.52f) else Modifier.fillMaxWidth())
                         .padding(top = 4.dp)
                 )
 
                 Spacer(modifier = Modifier.height(18.dp))
-                Divider(color = Color(0x33A855F7), thickness = 1.dp)
+                ThemedDivider()
                 Spacer(modifier = Modifier.height(14.dp))
 
                 // Bottom Income & Expenses Row
@@ -141,8 +161,12 @@ fun HinataMainBalanceCard(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(16.dp))
-                            .background(Color(0x551E0638))
-                            .border(1.dp, Color(0x26A855F7), RoundedCornerShape(16.dp))
+                            .background(if (isHinataTheme) Color(0x551E0638) else Color(0xFF0E0E12))
+                            .border(
+                                1.dp,
+                                if (isHinataTheme) Color(0x33A855F7) else CardGlassBorder,
+                                RoundedCornerShape(16.dp)
+                            )
                             .padding(10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -151,14 +175,14 @@ fun HinataMainBalanceCard(
                             modifier = Modifier
                                 .size(32.dp)
                                 .clip(CircleShape)
-                                .background(Color(0x3310B981))
-                                .border(1.dp, Color(0x6610B981), CircleShape),
+                                .background(NeonGreen.copy(alpha = 0.15f))
+                                .border(1.dp, NeonGreen.copy(alpha = 0.4f), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.ArrowUpward,
                                 contentDescription = "Income",
-                                tint = EmeraldIncome,
+                                tint = NeonGreen,
                                 modifier = Modifier.size(16.dp)
                             )
                         }
@@ -167,13 +191,13 @@ fun HinataMainBalanceCard(
                                 text = "TOTAL INCOME",
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = HinataPurpleLight.copy(alpha = 0.6f)
+                                color = if (isHinataTheme) HinataPurpleLight.copy(alpha = 0.6f) else TextMuted
                             )
                             Text(
-                                text = "+₹ %.2f".format(totalIncome),
+                                text = "+₹${indianNumber(totalIncome)}",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = EmeraldIncome
+                                color = NeonGreen
                             )
                         }
                     }
@@ -183,8 +207,12 @@ fun HinataMainBalanceCard(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(16.dp))
-                            .background(Color(0x551E0638))
-                            .border(1.dp, Color(0x26A855F7), RoundedCornerShape(16.dp))
+                            .background(if (isHinataTheme) Color(0x551E0638) else Color(0xFF0E0E12))
+                            .border(
+                                1.dp,
+                                if (isHinataTheme) Color(0x33A855F7) else CardGlassBorder,
+                                RoundedCornerShape(16.dp)
+                            )
                             .padding(10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -193,14 +221,14 @@ fun HinataMainBalanceCard(
                             modifier = Modifier
                                 .size(32.dp)
                                 .clip(CircleShape)
-                                .background(Color(0x33F43F5E))
-                                .border(1.dp, Color(0x66F43F5E), CircleShape),
+                                .background(NeonRed.copy(alpha = 0.15f))
+                                .border(1.dp, NeonRed.copy(alpha = 0.4f), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.ArrowDownward,
                                 contentDescription = "Expense",
-                                tint = RoseDeficit,
+                                tint = NeonRed,
                                 modifier = Modifier.size(16.dp)
                             )
                         }
@@ -209,13 +237,13 @@ fun HinataMainBalanceCard(
                                 text = "TOTAL EXPENSES",
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = HinataPurpleLight.copy(alpha = 0.6f)
+                                color = if (isHinataTheme) HinataPurpleLight.copy(alpha = 0.6f) else TextMuted
                             )
                             Text(
-                                text = "-₹ %.2f".format(totalExpenses),
+                                text = "-₹${indianNumber(totalExpenses)}",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = RoseDeficit
+                                color = NeonRed
                             )
                         }
                     }
@@ -223,15 +251,18 @@ fun HinataMainBalanceCard(
             }
         }
 
-        // Hinata Corner Artwork: Aligned to TopEnd, extending slightly outside
-        Image(
-            painter = painterResource(id = R.drawable.hinata_corner),
-            contentDescription = "Hinata Hyuga",
-            contentScale = ContentScale.Fit,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .offset(x = 10.dp, y = (-26).dp)
-                .width(185.dp)
-        )
+        // Hinata Artwork: ONLY rendered in Hinata Theme, positioned big & majestic matching reference image
+        if (isHinataTheme) {
+            Image(
+                painter = painterResource(id = R.drawable.hinata_corner),
+                contentDescription = "Hinata Hyuga",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 6.dp, y = (-32).dp)
+                    .width(245.dp)
+                    .height(275.dp)
+            )
+        }
     }
 }
