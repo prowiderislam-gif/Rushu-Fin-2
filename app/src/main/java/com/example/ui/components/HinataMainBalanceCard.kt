@@ -17,6 +17,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -39,14 +40,12 @@ fun HinataMainBalanceCard(
     val isHinataTheme = theme == AppTheme.HINATA
     val isDefaultTheme = theme == AppTheme.DEFAULT
 
-    // Outer box: In Hinata theme, top padding provides headroom so her head sits right under the header buttons!
+    // Outer Container
     Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(top = if (isHinataTheme) 44.dp else 0.dp)
+        modifier = modifier.fillMaxWidth()
     ) {
-        // 1. The Main Balance Card Box
-        Card(
+        // Main Balance Card Container
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .shadow(
@@ -54,6 +53,14 @@ fun HinataMainBalanceCard(
                     shape = RoundedCornerShape(24.dp),
                     ambientColor = if (isHinataTheme) HinataCardGlow else (if (isSurplus) NeonGreenGlow else NeonRedGlow),
                     spotColor = if (isHinataTheme) HinataCardGlow else (if (isSurplus) NeonGreenGlow else NeonRedGlow)
+                )
+                .background(
+                    color = when {
+                        isHinataTheme -> HinataSurface
+                        isDefaultTheme -> Color(0xFF041910) // Glowing Emerald Green Glassmorphism for Default
+                        else -> CardGlass
+                    },
+                    shape = RoundedCornerShape(24.dp)
                 )
                 .border(
                     width = if (isDefaultTheme) 1.5.dp else 1.dp,
@@ -63,29 +70,52 @@ fun HinataMainBalanceCard(
                         else -> CardGlassBorder
                     },
                     shape = RoundedCornerShape(24.dp)
-                ),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = when {
-                    isHinataTheme -> HinataSurface
-                    isDefaultTheme -> Color(0xFF041910) // Glowing Emerald Green Glassmorphism surface for Default
-                    else -> CardGlass
-                }
-            )
+                )
         ) {
+            // 1. GIANT HINATA: Placed behind the Bottom "Total Expenses" card, but on top of card canvas
+            // Using layout(0, 0) reports ZERO height to the parent Box so there is ZERO extra bottom gap!
+            if (isHinataTheme) {
+                Image(
+                    painter = painterResource(id = R.drawable.hinata_corner),
+                    contentDescription = "Hinata Hyuga",
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .layout { measurable, constraints ->
+                            val targetWidth = 385.dp.roundToPx()
+                            val targetHeight = 515.dp.roundToPx()
+                            val placeable = measurable.measure(
+                                constraints.copy(
+                                    minWidth = targetWidth,
+                                    maxWidth = targetWidth,
+                                    minHeight = targetHeight,
+                                    maxHeight = targetHeight
+                                )
+                            )
+                            layout(0, 0) {
+                                placeable.placeRelative(
+                                    x = -targetWidth + 24.dp.roundToPx(),
+                                    y = (-118).dp.roundToPx() // Reaches right up under the TIER 2 button
+                                )
+                            }
+                        }
+                )
+            }
+
+            // 2. Card Content (Rendered in front of Hinata so "Total Expenses" sits ON TOP of her body)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(20.dp)
             ) {
-                // Header Row (Constrained to 48% width in Hinata theme so text never overlaps her image)
+                // Header Row (Constrained width in Hinata theme so text stays cleanly on the left)
                 Row(
                     modifier = if (isHinataTheme) Modifier.fillMaxWidth(0.48f) else Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "MAIN LIVE BALANCE",
+                        text = "CURRENT BALANCE",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp,
@@ -161,7 +191,7 @@ fun HinataMainBalanceCard(
                 ThemedDivider()
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Bottom Income & Expenses Row
+                // Bottom Income & Expenses Row — Rendered ON TOP of Hinata's jacket!
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -173,15 +203,15 @@ fun HinataMainBalanceCard(
                             .clip(RoundedCornerShape(16.dp))
                             .background(
                                 when {
-                                    isHinataTheme -> Color(0x551E0638)
-                                    isDefaultTheme -> Color(0x2B00FF9C)
+                                    isHinataTheme -> Color(0xFF1B0733) // Solid violet so it sits crisply on top
+                                    isDefaultTheme -> Color(0xFF092418)
                                     else -> Color(0xFF131C2E)
                                 }
                             )
                             .border(
                                 1.dp,
                                 when {
-                                    isHinataTheme -> Color(0x33A855F7)
+                                    isHinataTheme -> Color(0x66A855F7)
                                     isDefaultTheme -> NeonGreen.copy(alpha = 0.4f)
                                     else -> CardGlassBorder
                                 },
@@ -222,22 +252,22 @@ fun HinataMainBalanceCard(
                         }
                     }
 
-                    // Total Expenses Tile
+                    // Total Expenses Tile (Sits ON TOP of Hinata)
                     Row(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(16.dp))
                             .background(
                                 when {
-                                    isHinataTheme -> Color(0x551E0638)
-                                    isDefaultTheme -> Color(0x2BFF3366)
+                                    isHinataTheme -> Color(0xFF1B0733) // Solid violet so her jacket flows cleanly behind
+                                    isDefaultTheme -> Color(0xFF260A13)
                                     else -> Color(0xFF131C2E)
                                 }
                             )
                             .border(
                                 1.dp,
                                 when {
-                                    isHinataTheme -> Color(0x33A855F7)
+                                    isHinataTheme -> Color(0x66A855F7)
                                     isDefaultTheme -> NeonRed.copy(alpha = 0.4f)
                                     else -> CardGlassBorder
                                 },
@@ -279,20 +309,6 @@ fun HinataMainBalanceCard(
                     }
                 }
             }
-        }
-
-        // 2. GIANT HINATA: Placed ON TOP of the card, extending up towards the header buttons and down to the bottom border!
-        if (isHinataTheme) {
-            Image(
-                painter = painterResource(id = R.drawable.hinata_corner),
-                contentDescription = "Hinata Hyuga",
-                contentScale = ContentScale.Fit,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(x = 10.dp, y = (-42).dp)
-                    .width(275.dp)
-                    .height(370.dp)
-            )
         }
     }
 }
