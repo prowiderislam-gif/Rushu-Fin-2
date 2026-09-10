@@ -342,7 +342,7 @@ fun DashboardScreen(
             }
         }
 
-        if (uiState.themeMode == AppTheme.SAKURA_BLOOM || uiState.themeMode == AppTheme.MOONLIT_PURPLE || uiState.themeMode == AppTheme.HINATA) {
+        if (uiState.themeMode == AppTheme.HINATA) {
             FloatingPetalsOverlay(
                 petalColor = NeonCyan,
                 petalCount = 14
@@ -571,15 +571,9 @@ fun AppHeader(
                         text = "RUSHU FIN",
                         style = neonTextStyle(NeonCyan, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, glowRadius = 16f)
                     )
-                    val themeAccentEmoji = when (LocalAppTheme.current) {
-                        AppTheme.GOLDEN_HIVE -> "\uD83D\uDC1D"
-                        AppTheme.SAKURA_BLOOM, AppTheme.MOONLIT_PURPLE -> "\uD83C\uDF38"
-                        AppTheme.HINATA -> "🪷"
-                        else -> null
-                    }
-                    if (themeAccentEmoji != null) {
+                    if (LocalAppTheme.current == AppTheme.HINATA) {
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(text = themeAccentEmoji, fontSize = 16.sp)
+                        Text(text = "🪷", fontSize = 16.sp)
                     }
                 }
                 Text(
@@ -821,7 +815,7 @@ fun NormalTransactionModule(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFF0E0E12))
+                    .background(SurfaceDark)
                     .border(1.dp, CardGlassBorder, RoundedCornerShape(12.dp))
                     .padding(3.dp)
             ) {
@@ -829,7 +823,7 @@ fun NormalTransactionModule(
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(if (isIncome) NeonGreen.copy(alpha = 0.25f) else Color.Transparent)
+                        .background(if (isIncome) NeonGreen.copy(alpha = 0.22f) else Color.Transparent)
                         .clickable { selectedType = "INCOME" }
                         .padding(vertical = 10.dp)
                         .testTag("tab_income"),
@@ -845,7 +839,7 @@ fun NormalTransactionModule(
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(if (!isIncome) NeonRed.copy(alpha = 0.25f) else Color.Transparent)
+                        .background(if (!isIncome) NeonRed.copy(alpha = 0.22f) else Color.Transparent)
                         .clickable { selectedType = "EXPENSE" }
                         .padding(vertical = 10.dp)
                         .testTag("tab_expense"),
@@ -1006,7 +1000,7 @@ fun LiabilityManagementModule(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFF0E0E12))
+                    .background(SurfaceDark)
                     .border(1.dp, CardGlassBorder, RoundedCornerShape(12.dp))
                     .padding(3.dp)
             ) {
@@ -1014,7 +1008,7 @@ fun LiabilityManagementModule(
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(if (isAdding) NeonRed.copy(alpha = 0.25f) else Color.Transparent)
+                        .background(if (isAdding) NeonRed.copy(alpha = 0.22f) else Color.Transparent)
                         .clickable { selectedAction = "ADD_LIABILITY" }
                         .padding(vertical = 10.dp)
                         .testTag("tab_add_liability"),
@@ -1030,7 +1024,7 @@ fun LiabilityManagementModule(
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(if (!isAdding) NeonCyan.copy(alpha = 0.25f) else Color.Transparent)
+                        .background(if (!isAdding) NeonCyan.copy(alpha = 0.22f) else Color.Transparent)
                         .clickable { selectedAction = "PAY_LIABILITY" }
                         .padding(vertical = 10.dp)
                         .testTag("tab_pay_liability"),
@@ -1189,7 +1183,7 @@ fun AuditLedgersSection(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFF0E0E12))
+                .background(SurfaceDark)
                 .border(1.dp, CardGlassBorder, RoundedCornerShape(12.dp))
                 .padding(4.dp)
         ) {
@@ -2371,27 +2365,6 @@ fun SettingsAndCloudSyncDialog(
                             description = "Bigger text, no glow — easier to read for older eyes.",
                             selected = uiState.themeMode == AppTheme.BASIC,
                             onClick = { onSelectTheme(AppTheme.BASIC) }
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        ThemeOptionRow(
-                            title = "🐝 Golden Hive",
-                            description = "Black and gold, honeycomb accents.",
-                            selected = uiState.themeMode == AppTheme.GOLDEN_HIVE,
-                            onClick = { onSelectTheme(AppTheme.GOLDEN_HIVE) }
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        ThemeOptionRow(
-                            title = "🌸 Sakura Bloom",
-                            description = "Black and rose-pink, cherry blossom accents.",
-                            selected = uiState.themeMode == AppTheme.SAKURA_BLOOM,
-                            onClick = { onSelectTheme(AppTheme.SAKURA_BLOOM) }
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        ThemeOptionRow(
-                            title = "🌙 Moonlit Purple",
-                            description = "Violet chrome with green balance, gold initial, pink liability.",
-                            selected = uiState.themeMode == AppTheme.MOONLIT_PURPLE,
-                            onClick = { onSelectTheme(AppTheme.MOONLIT_PURPLE) }
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         ThemeOptionRow(
