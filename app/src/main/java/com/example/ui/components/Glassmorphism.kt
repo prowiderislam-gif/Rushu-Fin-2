@@ -76,12 +76,7 @@ fun GlassBox(
 ) {
     val theme = LocalAppTheme.current
     val basicMode = theme == AppTheme.BASIC
-    val kittyMode = theme == AppTheme.KITTY
-
-    // Kitty theme gets extra-round, soft "paw-like" corners everywhere,
-    // regardless of what shape the caller asked for — a single change
-    // here re-shapes every card in the app.
-    val effectiveShape = if (kittyMode) RoundedCornerShape(28.dp) else shape
+    val effectiveShape = shape
 
     val animatedGlowColor by animateColorAsState(
         targetValue = if (basicMode) Color.Transparent else glowColor,
@@ -171,8 +166,8 @@ fun neonTextStyle(
 ): TextStyle {
     val theme = LocalAppTheme.current
     val basicMode = theme == AppTheme.BASIC
-    val kittyMode = theme == AppTheme.KITTY
-    val effectiveGlowRadius = if (kittyMode) glowRadius * 0.6f else glowRadius
+    val softGlowMode = theme == AppTheme.MOONLIT_PURPLE || theme == AppTheme.SAKURA_BLOOM
+    val effectiveGlowRadius = if (softGlowMode) glowRadius * 0.6f else glowRadius
 
     return TextStyle(
         color = color,
@@ -247,12 +242,21 @@ fun GlowingPayoffProgressBar(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Icon(
-                        imageVector = if (isDebtFree) Icons.Default.CheckCircle else Icons.Default.Warning,
-                        contentDescription = null,
-                        tint = activeColor,
-                        modifier = Modifier.size(18.dp)
-                    )
+                    val themeAccentEmoji = when (LocalAppTheme.current) {
+                        AppTheme.GOLDEN_HIVE -> "\uD83D\uDC1D"
+                        AppTheme.SAKURA_BLOOM, AppTheme.MOONLIT_PURPLE -> "\uD83C\uDF38"
+                        else -> null
+                    }
+                    if (themeAccentEmoji != null) {
+                        Text(text = themeAccentEmoji, fontSize = 15.sp)
+                    } else {
+                        Icon(
+                            imageVector = if (isDebtFree) Icons.Default.CheckCircle else Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = activeColor,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                     Text(
                         text = if (isDebtFree) "LIABILITY PAYOFF: 100% PAID" else "LIABILITY PAYOFF PROGRESS",
                         style = neonTextStyle(activeColor, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, glowRadius = 10f)
