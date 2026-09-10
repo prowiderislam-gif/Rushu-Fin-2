@@ -268,8 +268,11 @@ fun DashboardScreen(
 
             // Top Section — Main Live Balance Box
             item {
-                MainLiveBalanceCard(
-                    uiState = uiState
+                HinataMainBalanceCard(
+                    liveBalance = uiState.liveBalance,
+                    totalIncome = uiState.totalIncome,
+                    totalExpenses = uiState.totalExpense,
+                    formulaText = "Formula: Initial (${uiState.currencySymbol}${uiState.initialBalance.toInt()}) + Income (${uiState.currencySymbol}${uiState.totalIncome.toInt()}) - Expenses (${uiState.currencySymbol}${uiState.totalExpense.toInt()})"
                 )
             }
 
@@ -656,11 +659,14 @@ fun AppHeader(
  * Strictly non-editable directly.
  */
 @Composable
-fun MainLiveBalanceCard(
-    uiState: FinanceUiState,
+fun HinataMainBalanceCard(
+    liveBalance: Double,
+    totalIncome: Double,
+    totalExpenses: Double,
+    formulaText: String,
     modifier: Modifier = Modifier
 ) {
-    val isPositive = uiState.liveBalance >= 0
+    val isPositive = liveBalance >= 0
     val glowColor = if (isPositive) NeonGreen else NeonRed
     val textColor = if (isPositive) NeonGreen else NeonRed
 
@@ -683,7 +689,12 @@ fun MainLiveBalanceCard(
             ) {
                 Text(
                     text = "MAIN LIVE BALANCE",
-                    style = neonTextStyle(glowColor, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, glowRadius = 10f)
+                    style = neonTextStyle(
+                        glowColor,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        glowRadius = 10f
+                    )
                 )
                 Surface(
                     shape = RoundedCornerShape(12.dp),
@@ -702,18 +713,21 @@ fun MainLiveBalanceCard(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Calculated Live Net Balance
             Text(
-                text = "${uiState.currencySymbol} ${indianNumber(uiState.liveBalance)}",
-                style = neonTextStyle(textColor, fontSize = 36.sp, fontWeight = FontWeight.Black, glowRadius = 24f),
+                text = "₹ ${indianNumber(liveBalance)}",
+                style = neonTextStyle(
+                    textColor,
+                    fontSize = 36.sp,
+                    fontWeight = FontWeight.Black,
+                    glowRadius = 24f
+                ),
                 textAlign = TextAlign.Center
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Non-editable calculation formula badge
             Text(
-                text = "Formula: Initial (${uiState.currencySymbol}${uiState.initialBalance.toInt()}) + Income (${uiState.currencySymbol}${uiState.totalIncome.toInt()}) - Expenses (${uiState.currencySymbol}${uiState.totalExpense.toInt()})",
+                text = formulaText,
                 color = TextSecondary,
                 fontSize = 11.sp,
                 textAlign = TextAlign.Center
@@ -725,7 +739,6 @@ fun MainLiveBalanceCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Income and Expense breakdown row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
@@ -751,7 +764,7 @@ fun MainLiveBalanceCard(
                     Column {
                         Text(text = "Total Income", color = TextMuted, fontSize = 10.sp)
                         Text(
-                            text = "+${uiState.currencySymbol}${indianNumber(uiState.totalIncome)}",
+                            text = "+₹${indianNumber(totalIncome)}",
                             color = NeonGreen,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
@@ -780,7 +793,7 @@ fun MainLiveBalanceCard(
                     Column {
                         Text(text = "Total Expenses", color = TextMuted, fontSize = 10.sp)
                         Text(
-                            text = "-${uiState.currencySymbol}${indianNumber(uiState.totalExpense)}",
+                            text = "-₹${indianNumber(totalExpenses)}",
                             color = NeonRed,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
