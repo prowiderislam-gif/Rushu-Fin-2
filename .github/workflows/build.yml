@@ -2,9 +2,9 @@ name: Build Standalone APK
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "RS-new" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "RS-new" ]
   workflow_dispatch:
 
 jobs:
