@@ -607,6 +607,39 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
         }
 
         val sb = StringBuilder()
+
+        // No keywords given — just export everything in the date range,
+        // ungrouped, instead of producing nothing.
+        if (keywords.isEmpty()) {
+            sb.appendLine("RUSHU FIN - TRANSACTION EXPORT (no keywords given — showing all)")
+            sb.appendLine("Generated: $generatedAt")
+            sb.appendLine("Period: $periodLabel")
+            sb.appendLine("=".repeat(50))
+            sb.appendLine()
+            var allIncome = 0.0
+            var allExpense = 0.0
+            if (allTx.isEmpty()) {
+                sb.appendLine("(No transactions in this period)")
+            } else {
+                allTx.forEach { tx ->
+                    val sign = if (tx.type.equals("INCOME", ignoreCase = true)) "+" else "-"
+                    if (tx.type.equals("INCOME", ignoreCase = true)) allIncome += tx.amount else allExpense += tx.amount
+                    sb.appendLine("${tx.dateString} ${tx.timeString}  |  $sign$sym${indianNumber(tx.amount)}  |  ${tx.description}")
+                }
+            }
+            sb.appendLine()
+            sb.appendLine("=".repeat(50))
+            sb.appendLine("TOTAL")
+            sb.appendLine("=".repeat(50))
+            sb.appendLine("Total Income      : +$sym${indianNumber(allIncome)}")
+            sb.appendLine("Total Expenses    : -$sym${indianNumber(allExpense)}")
+            sb.appendLine("Net               : $sym${indianNumber(allIncome - allExpense)}")
+            sb.appendLine()
+            sb.appendLine("-".repeat(50))
+            sb.appendLine("Exported from RUSHU FIN - Personal Finance & Liability Tracking")
+            return sb.toString()
+        }
+
         sb.appendLine("RUSHU FIN - KEYWORD EXPORT")
         sb.appendLine("Generated: $generatedAt")
         sb.appendLine("Period: $periodLabel")
