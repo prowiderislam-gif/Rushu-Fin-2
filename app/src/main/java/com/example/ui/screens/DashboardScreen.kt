@@ -1874,7 +1874,7 @@ fun KeywordExportDialog(
         text = {
             Column {
                 Text(
-                    text = "Type a name or word (e.g. \"X\", \"Salary\") — any transaction whose description contains it will be grouped and subtotaled. Add as many as you like.",
+                    text = "Type a name or word (e.g. \"X\", \"Salary\") — any transaction whose description contains it will be grouped and subtotaled. Add as many as you like, or leave this empty to export everything.",
                     color = TextSecondary,
                     fontSize = 12.sp
                 )
@@ -1990,7 +1990,6 @@ fun KeywordExportDialog(
                     val end = if (exportFromBeginning) null else endDateMillis
                     onExport(keywords.toList(), start, end)
                 },
-                enabled = keywords.isNotEmpty() || keywordInput.isNotBlank(),
                 colors = ButtonDefaults.buttonColors(containerColor = NeonCyan)
             ) {
                 Text("EXPORT", color = CanvasBackground, fontWeight = FontWeight.Bold)
