@@ -104,7 +104,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -226,20 +225,6 @@ fun DashboardScreen(
             .fillMaxSize()
             .background(CanvasBackground)
     ) {
-        // GIANT HINATA: Placed behind the top buttons and spans down across the Main Balance Box!
-        if (isHinata) {
-            Image(
-                painter = painterResource(id = R.drawable.hinata_corner),
-                contentDescription = "Hinata Hyuga",
-                contentScale = ContentScale.Fit,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 22.dp)
-                    .width(250.dp)
-                    .height(360.dp)
-            )
-        }
-
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -264,17 +249,21 @@ fun DashboardScreen(
                 )
             }
 
-            // Top Section — Main Live Balance Box
+            // Top Section — Main Live Balance Box with Hinata integrated on top, scrolling smoothly together
             item {
                 HinataMainBalanceCard(
                     liveBalance = uiState.liveBalance,
                     totalIncome = uiState.totalIncome,
                     totalExpenses = uiState.totalExpense,
-                    formulaText = "Formula: Initial (${uiState.currencySymbol}${uiState.initialBalance.toInt()}) + Income (${uiState.currencySymbol}${uiState.totalIncome.toInt()}) - Expenses (${uiState.currencySymbol}${uiState.totalExpense.toInt()})"
+                    formulaText = if (uiState.themeMode == AppTheme.BASIC) {
+                        "Balance = Starting (${uiState.currencySymbol}${uiState.initialBalance.toInt()}) + Income - Expenses"
+                    } else {
+                        "Formula: Initial (${uiState.currencySymbol}${uiState.initialBalance.toInt()}) + Income (${uiState.currencySymbol}${uiState.totalIncome.toInt()}) - Expenses (${uiState.currencySymbol}${uiState.totalExpense.toInt()})"
+                    }
                 )
             }
 
-            // Middle Section — Split Balance Row with Perfectly Equal Heights
+            // Middle Section — Split Balance Row with 100% Equal Heights
             item {
                 SplitBalanceRow(
                     uiState = uiState,
@@ -844,7 +833,7 @@ fun NormalTransactionModule(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Switch tabs: In Hinata theme, both stay in dark violet surface
+            // Switch tabs
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -2469,21 +2458,21 @@ fun SettingsAndCloudSyncDialog(
 
                         ThemeOptionRow(
                             title = "Default (Neon)",
-                            description = "The original glowing dark theme.",
+                            description = "The original glowing dark theme with emerald green balance glass.",
                             selected = uiState.themeMode == AppTheme.DEFAULT,
                             onClick = { onSelectTheme(AppTheme.DEFAULT) }
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         ThemeOptionRow(
                             title = "Basic / Large Text",
-                            description = "Bigger text, no glow — easier to read for older eyes.",
+                            description = "Gentle slate contrast, extra large text, glare-free for easy reading.",
                             selected = uiState.themeMode == AppTheme.BASIC,
                             onClick = { onSelectTheme(AppTheme.BASIC) }
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         ThemeOptionRow(
                             title = "🪷 Hinata Hyuga (Obsidian & Neon)",
-                            description = "Deep obsidian dark theme with lavender accents & Byakugan glows.",
+                            description = "Deep obsidian theme, giant Hinata artwork, lavender accents & Byakugan glows.",
                             selected = uiState.themeMode == AppTheme.HINATA,
                             onClick = { onSelectTheme(AppTheme.HINATA) }
                         )
