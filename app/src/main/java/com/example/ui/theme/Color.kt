@@ -5,7 +5,7 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
 
 // ------------------------------------------------------------------
-// Theme selection (5 Clean Themes)
+// Theme selection (6 Themes)
 // ------------------------------------------------------------------
 object AppTheme {
     const val DEFAULT = "DEFAULT"
@@ -13,6 +13,7 @@ object AppTheme {
     const val HINATA = "HINATA"
     const val KAKASHI = "KAKASHI"
     const val BUMBLEBEE = "BUMBLEBEE"
+    const val RUH = "RUH"
 
     // Backwards compatibility keys
     const val GOLDEN_HIVE = "GOLDEN_HIVE"
@@ -20,7 +21,22 @@ object AppTheme {
     const val MOONLIT_PURPLE = "MOONLIT_PURPLE"
 }
 
-val LocalAppTheme = compositionLocalOf { AppTheme.BUMBLEBEE }
+val LocalAppTheme = compositionLocalOf { AppTheme.RUH }
+
+// ------------------------------------------------------------------
+// Ruh / Itachi (Blood Red, Sharingan & Crimson Crows) Palette
+// ------------------------------------------------------------------
+val RuhBackground = Color(0xFF020002L)         // Pitch black midnight
+val RuhSurface = Color(0xFF0D0204L)            // Dark obsidian crimson glass
+val RuhCardBorder = Color(0xFFDC2626L)         // Vibrant blood red border
+val RuhCardGlow = Color(0x66DC2626L)           // Sharingan crimson glow
+val RuhBloodRed = Color(0xFFFF3B56L)           // Main live balance neon blood red
+val RuhIncomeRed = Color(0xFFFF6B81L)          // Luminous crimson rose income
+val RuhExpenseRed = Color(0xFFB91C1CL)         // Deep dark blood expense
+val RuhFixedRed = Color(0xFFEF4444L)           // Fixed initial glowing crimson
+val RuhPillBg = Color(0xFF260408L)             // Dark crimson pill background
+val RuhPillBorder = Color(0xFF991B1BL)         // Crimson pill border
+val RuhButtonBg = Color(0xFF7F1D1DL)           // Deep crimson button background
 
 // ------------------------------------------------------------------
 // Hinata Dedicated Standalone Palette
@@ -61,24 +77,24 @@ val KakashiButtonBg = Color(0xFF04192DL)
 // ------------------------------------------------------------------
 // Bumblebee (Glossy Metallic Amber Gold & Pitch Black) Palette
 // ------------------------------------------------------------------
-val BumblebeeBackground = Color(0xFF020100L)     // Pitch Black Canvas
-val BumblebeeSurface = Color(0xFF0A0601L)        // Deep Obsidian Gold-Tinted Surface
-val BumblebeeCardBorder = Color(0xFFF59E0BL)     // Metallic Amber Gold Edge
-val BumblebeeCardGlow = Color(0x66F59E0BL)       // Amber Fire Glow
-val BumblebeeGold = Color(0xFFFFB703L)           // Main Live Balance Metallic Gold
-val BumblebeeIncomeGold = Color(0xFFFBBF24L)     // +ive Income Bright Gold
-val BumblebeeFlameOrange = Color(0xFFF97316L)    // -ive Expense Flame Orange
-val BumblebeeFixedGold = Color(0xFFF59E0BL)      // Fixed Initial Deep Amber Gold
-val BumblebeePillBg = Color(0xFF261502L)         // Dark Honey-Amber Pill Background
-val BumblebeePillBorder = Color(0xFFD97706L)     // Sharp Honey-Gold Pill Border
-val BumblebeeButtonBg = Color(0xFFB45309L)       // Shiny Gold Action Button
-val BumblebeeButtonText = Color(0xFF000000L)     // High-contrast black on gold
+val BumblebeeBackground = Color(0xFF020100L)
+val BumblebeeSurface = Color(0xFF0A0601L)
+val BumblebeeCardBorder = Color(0xFFF59E0BL)
+val BumblebeeCardGlow = Color(0x66F59E0BL)
+val BumblebeeGold = Color(0xFFFFB703L)
+val BumblebeeIncomeGold = Color(0xFFFBBF24L)
+val BumblebeeFlameOrange = Color(0xFFF97316L)
+val BumblebeeFixedGold = Color(0xFFF59E0BL)
+val BumblebeePillBg = Color(0xFF261502L)
+val BumblebeePillBorder = Color(0xFFD97706L)
+val BumblebeeButtonBg = Color(0xFFB45309L)
 
 // ------------------------------------------------------------------
 // Background / Surface colors — theme-reactive
 // ------------------------------------------------------------------
 val CanvasBackground: Color
     @Composable get() = when (LocalAppTheme.current) {
+        AppTheme.RUH -> RuhBackground
         AppTheme.BUMBLEBEE -> BumblebeeBackground
         AppTheme.KAKASHI -> KakashiBackground
         AppTheme.HINATA -> HinataBackground
@@ -88,6 +104,7 @@ val CanvasBackground: Color
 
 val SurfaceDark: Color
     @Composable get() = when (LocalAppTheme.current) {
+        AppTheme.RUH -> Color(0xFF080103L)
         AppTheme.BUMBLEBEE -> Color(0xFF070401L)
         AppTheme.KAKASHI -> Color(0xFF02070EL)
         AppTheme.HINATA -> Color(0xFF080112L)
@@ -97,6 +114,7 @@ val SurfaceDark: Color
 
 val SurfaceCard: Color
     @Composable get() = when (LocalAppTheme.current) {
+        AppTheme.RUH -> RuhSurface
         AppTheme.BUMBLEBEE -> BumblebeeSurface
         AppTheme.KAKASHI -> KakashiSurface
         AppTheme.HINATA -> HinataSurface
@@ -106,6 +124,7 @@ val SurfaceCard: Color
 
 val CardGlass: Color
     @Composable get() = when (LocalAppTheme.current) {
+        AppTheme.RUH -> RuhSurface
         AppTheme.BUMBLEBEE -> BumblebeeSurface
         AppTheme.KAKASHI -> KakashiSurface
         AppTheme.HINATA -> HinataSurface
@@ -115,6 +134,7 @@ val CardGlass: Color
 
 val CardGlassBorder: Color
     @Composable get() = when (LocalAppTheme.current) {
+        AppTheme.RUH -> RuhCardBorder
         AppTheme.BUMBLEBEE -> BumblebeeCardBorder
         AppTheme.KAKASHI -> KakashiCardBorder
         AppTheme.HINATA -> HinataCardBorder
@@ -127,6 +147,7 @@ val CardGlassBorder: Color
 // ------------------------------------------------------------------
 val NeonGreen: Color
     @Composable get() = when (LocalAppTheme.current) {
+        AppTheme.RUH -> RuhIncomeRed
         AppTheme.BUMBLEBEE -> BumblebeeIncomeGold
         AppTheme.KAKASHI -> KakashiIncomeBlue
         AppTheme.HINATA -> Color(0xFF00FFB2L)
@@ -136,6 +157,7 @@ val NeonGreen: Color
 
 val NeonGreenGlow: Color
     @Composable get() = when (LocalAppTheme.current) {
+        AppTheme.RUH -> RuhCardGlow
         AppTheme.BUMBLEBEE -> BumblebeeCardGlow
         AppTheme.KAKASHI -> KakashiCardGlow
         AppTheme.HINATA -> Color(0x40A855F7L)
@@ -145,6 +167,7 @@ val NeonGreenGlow: Color
 
 val NeonGreenDark: Color
     @Composable get() = when (LocalAppTheme.current) {
+        AppTheme.RUH -> Color(0xFF450A0AL)
         AppTheme.BUMBLEBEE -> Color(0xFF78350FL)
         AppTheme.KAKASHI -> Color(0xFF0369A1L)
         AppTheme.HINATA -> Color(0xFF008F64L)
@@ -154,6 +177,7 @@ val NeonGreenDark: Color
 
 val NeonRed: Color
     @Composable get() = when (LocalAppTheme.current) {
+        AppTheme.RUH -> RuhExpenseRed
         AppTheme.BUMBLEBEE -> BumblebeeFlameOrange
         AppTheme.KAKASHI -> KakashiSharinganRed
         AppTheme.HINATA -> Color(0xFFFB7185L)
@@ -163,6 +187,7 @@ val NeonRed: Color
 
 val NeonRedGlow: Color
     @Composable get() = when (LocalAppTheme.current) {
+        AppTheme.RUH -> RuhCardGlow
         AppTheme.BUMBLEBEE -> Color(0x66F97316L)
         AppTheme.KAKASHI -> Color(0x66FF334BL)
         AppTheme.HINATA -> Color(0x40A855F7L)
@@ -172,6 +197,7 @@ val NeonRedGlow: Color
 
 val NeonRedDark: Color
     @Composable get() = when (LocalAppTheme.current) {
+        AppTheme.RUH -> Color(0xFF2B050AL)
         AppTheme.BUMBLEBEE -> Color(0xFF7C2D12L)
         AppTheme.KAKASHI -> Color(0xFF991B1BL)
         AppTheme.HINATA -> Color(0xFF9F1239L)
@@ -181,6 +207,7 @@ val NeonRedDark: Color
 
 val NeonYellow: Color
     @Composable get() = when (LocalAppTheme.current) {
+        AppTheme.RUH -> RuhFixedRed
         AppTheme.BUMBLEBEE -> BumblebeeFixedGold
         AppTheme.KAKASHI -> KakashiFixedBlue
         AppTheme.HINATA -> Color(0xFFFACC15L)
@@ -190,6 +217,7 @@ val NeonYellow: Color
 
 val NeonYellowGlow: Color
     @Composable get() = when (LocalAppTheme.current) {
+        AppTheme.RUH -> RuhCardGlow
         AppTheme.BUMBLEBEE -> BumblebeeCardGlow
         AppTheme.KAKASHI -> KakashiCardGlow
         AppTheme.HINATA -> Color(0x40A855F7L)
@@ -197,17 +225,9 @@ val NeonYellowGlow: Color
         else -> Color(0x66FFD600L)
     }
 
-val NeonYellowDark: Color
-    @Composable get() = when (LocalAppTheme.current) {
-        AppTheme.BUMBLEBEE -> Color(0xFF92400EL)
-        AppTheme.KAKASHI -> Color(0xFF0284C7L)
-        AppTheme.HINATA -> Color(0xFF854D0EL)
-        AppTheme.BASIC -> Color(0xFFCA8A04L)
-        else -> Color(0xFF8F7800L)
-    }
-
 val NeonCyan: Color
     @Composable get() = when (LocalAppTheme.current) {
+        AppTheme.RUH -> RuhBloodRed
         AppTheme.BUMBLEBEE -> BumblebeeGold
         AppTheme.KAKASHI -> KakashiBalanceBlue
         AppTheme.HINATA -> Color(0xFFC084FCL)
@@ -217,6 +237,7 @@ val NeonCyan: Color
 
 val NeonCyanGlow: Color
     @Composable get() = when (LocalAppTheme.current) {
+        AppTheme.RUH -> RuhCardGlow
         AppTheme.BUMBLEBEE -> BumblebeeCardGlow
         AppTheme.KAKASHI -> KakashiCardGlow
         AppTheme.HINATA -> Color(0x40A855F7L)
@@ -226,6 +247,7 @@ val NeonCyanGlow: Color
 
 val NeonPurple: Color
     @Composable get() = when (LocalAppTheme.current) {
+        AppTheme.RUH -> RuhBloodRed
         AppTheme.BUMBLEBEE -> BumblebeeGold
         AppTheme.KAKASHI -> KakashiBalanceBlue
         AppTheme.HINATA -> Color(0xFFA855F7L)
@@ -235,6 +257,7 @@ val NeonPurple: Color
 
 val NeonPurpleGlow: Color
     @Composable get() = when (LocalAppTheme.current) {
+        AppTheme.RUH -> RuhCardGlow
         AppTheme.BUMBLEBEE -> BumblebeeCardGlow
         AppTheme.KAKASHI -> KakashiCardGlow
         AppTheme.HINATA -> Color(0x66A855F7L)
@@ -247,6 +270,7 @@ val NeonPurpleGlow: Color
 // ------------------------------------------------------------------
 val TextPrimary: Color
     @Composable get() = when (LocalAppTheme.current) {
+        AppTheme.RUH -> Color(0xFFFFFFFFL)
         AppTheme.BUMBLEBEE -> Color(0xFFFFFFFFL)
         AppTheme.KAKASHI -> Color(0xFFFFFFFFL)
         AppTheme.HINATA -> Color(0xFFF3E8FFL)
@@ -256,7 +280,8 @@ val TextPrimary: Color
 
 val TextSecondary: Color
     @Composable get() = when (LocalAppTheme.current) {
-        AppTheme.BUMBLEBEE -> Color(0xFFD97706L) // Warm gold secondary
+        AppTheme.RUH -> Color(0xFFE57373L) // Soft crimson secondary
+        AppTheme.BUMBLEBEE -> Color(0xFFD97706L)
         AppTheme.KAKASHI -> Color(0xFF8FA3BFL)
         AppTheme.HINATA -> Color(0xFFD8B4FEL)
         AppTheme.BASIC -> Color(0xFFCBD5E1L)
@@ -265,6 +290,7 @@ val TextSecondary: Color
 
 val TextMuted: Color
     @Composable get() = when (LocalAppTheme.current) {
+        AppTheme.RUH -> Color(0xFF991B1BL)
         AppTheme.BUMBLEBEE -> Color(0xFF78350FL)
         AppTheme.KAKASHI -> Color(0xFF536780L)
         AppTheme.HINATA -> Color(0xFFA855F7L)
