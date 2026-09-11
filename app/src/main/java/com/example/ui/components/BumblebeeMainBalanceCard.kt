@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import com.example.R
 import com.example.ui.theme.*
 import com.example.util.indianNumber
+import java.text.DecimalFormat
 
 @SuppressLint("DiscouragedApi")
 @Composable
@@ -44,6 +45,15 @@ fun BumblebeeMainBalanceCard(
     val bumblebeeResId = remember(context) {
         val resId = context.resources.getIdentifier("bumblebee_corner", "drawable", context.packageName)
         if (resId != 0) resId else R.drawable.rushu_fin_logo
+    }
+
+    // Format balance: Standard Indian system up to 10 Lakhs, then uses 'k' format after 10 Lakhs
+    val formattedBalance = if (kotlin.math.abs(liveBalance) >= 1_000_000.0) {
+        val thousands = liveBalance / 1_000.0
+        val kFormat = DecimalFormat("##,##,##,##0.#")
+        "${kFormat.format(thousands)}k"
+    } else {
+        indianNumber(liveBalance)
     }
 
     Box(
@@ -71,7 +81,6 @@ fun BumblebeeMainBalanceCard(
         )
 
         // 2. BUMBLEBEE CAR ARTWORK (Rendered BEFORE buttons/texts so buttons and numbers are ON TOP)
-        // Raised upward so the cropped bottom edge is hidden, and top smoke/sparks burst outside the box
         Image(
             painter = painterResource(id = bumblebeeResId),
             contentDescription = "Bumblebee Autobot",
@@ -90,7 +99,6 @@ fun BumblebeeMainBalanceCard(
                         )
                     )
                     layout(0, 0) {
-                        // Raised upward to -68dp (keeps bottom cleanly above the card edge)
                         placeable.placeRelative(
                             x = -targetWidth + 30.dp.roundToPx(),
                             y = (-68).dp.roundToPx()
@@ -136,13 +144,15 @@ fun BumblebeeMainBalanceCard(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Live Balance Amount (On Top)
+            // Live Balance Amount (Single line extending across over the car)
             Text(
-                text = "₹ ${indianNumber(liveBalance)}",
-                fontSize = 36.sp,
+                text = "₹ $formattedBalance",
+                fontSize = if (formattedBalance.length > 12) 28.sp else 34.sp,
                 fontWeight = FontWeight.ExtraBold,
+                maxLines = 1,
+                softWrap = false,
                 color = BumblebeeGold,
-                modifier = Modifier.fillMaxWidth(0.55f)
+                modifier = Modifier.fillMaxWidth()
             )
 
             // High Contrast Formula Text (On Top)
@@ -151,10 +161,10 @@ fun BumblebeeMainBalanceCard(
                 fontSize = 10.sp,
                 fontFamily = FontFamily.Monospace,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFFFDE68A), // High contrast warm gold
+                color = Color(0xFFFDE68A),
                 maxLines = 2,
                 modifier = Modifier
-                    .fillMaxWidth(0.55f)
+                    .fillMaxWidth(0.60f)
                     .padding(top = 4.dp)
             )
 
