@@ -73,7 +73,7 @@ fun KakashiMainBalanceCard(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "MAIN LIVE BALANCE",
+                        text = "CURRENT BALANCE JUTSU",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp,
