@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import com.example.R
 import com.example.ui.theme.*
 import com.example.util.indianNumber
+import java.text.DecimalFormat
 
 @Composable
 fun KakashiMainBalanceCard(
@@ -36,6 +37,15 @@ fun KakashiMainBalanceCard(
     isSurplus: Boolean = liveBalance >= 0,
     modifier: Modifier = Modifier
 ) {
+    // Format balance: Standard Indian system up to 10 Lakhs, then uses 'k' format after 10 Lakhs
+    val formattedBalance = if (kotlin.math.abs(liveBalance) >= 1_000_000.0) {
+        val thousands = liveBalance / 1_000.0
+        val kFormat = DecimalFormat("##,##,##,##0.#")
+        "${kFormat.format(thousands)}k"
+    } else {
+        indianNumber(liveBalance)
+    }
+
     // Outer Container: Exactly identical sizing and proportions to Hinata's card
     Box(
         modifier = modifier.fillMaxWidth()
@@ -60,12 +70,40 @@ fun KakashiMainBalanceCard(
                     shape = RoundedCornerShape(24.dp)
                 )
         ) {
+            // Kakashi Artwork placed behind text inside card box
+            Image(
+                painter = painterResource(id = R.drawable.kakashi_corner),
+                contentDescription = "Kakashi Hatake",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .layout { measurable, constraints ->
+                        val targetWidth = 370.dp.roundToPx()
+                        val targetHeight = 490.dp.roundToPx()
+                        val placeable = measurable.measure(
+                            constraints.copy(
+                                minWidth = targetWidth,
+                                maxWidth = targetWidth,
+                                minHeight = targetHeight,
+                                maxHeight = targetHeight
+                            )
+                        )
+                        layout(0, 0) {
+                            placeable.placeRelative(
+                                x = -targetWidth + 14.dp.roundToPx(),
+                                y = (-110).dp.roundToPx() // Spiky hair extends gracefully above top edge
+                            )
+                        }
+                    }
+            )
+
+            // Text and controls rendered on top of Kakashi
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(20.dp)
             ) {
-                // Header Title: Thematic "CURRENT BALANCE JUTSU" (Surplus completely removed!)
+                // Header Title: Thematic "CURRENT BALANCE JUTSU"
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -83,7 +121,7 @@ fun KakashiMainBalanceCard(
                     )
                 }
 
-                // Subtitle: "愛しいシュヘラ" in soft ice-cyan
+                // Subtitle
                 Text(
                     text = "写輪眼のカカシ",
                     fontSize = 11.sp,
@@ -93,13 +131,15 @@ fun KakashiMainBalanceCard(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Big Electric Azure Blue Balance Number
+                // Big Electric Azure Blue Balance Number (Extending single line across over Kakashi)
                 Text(
-                    text = "₹ ${indianNumber(liveBalance)}",
-                    fontSize = 36.sp,
+                    text = "₹ $formattedBalance",
+                    fontSize = if (formattedBalance.length > 12) 28.sp else 34.sp,
                     fontWeight = FontWeight.ExtraBold,
+                    maxLines = 1,
+                    softWrap = false,
                     color = KakashiBalanceBlue,
-                    modifier = Modifier.fillMaxWidth(0.50f)
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 Text(
@@ -109,7 +149,7 @@ fun KakashiMainBalanceCard(
                     color = Color(0xFF7E97B5),
                     maxLines = 2,
                     modifier = Modifier
-                        .fillMaxWidth(0.50f)
+                        .fillMaxWidth(0.60f)
                         .padding(top = 4.dp)
                 )
 
@@ -170,33 +210,6 @@ fun KakashiMainBalanceCard(
             }
         }
 
-        // 2. KAKASHI ARTWORK: Spiky hair naturally extends OUTSIDE the card box without cropping
-        Image(
-            painter = painterResource(id = R.drawable.kakashi_corner),
-            contentDescription = "Kakashi Hatake",
-            contentScale = ContentScale.Fit,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .layout { measurable, constraints ->
-                    val targetWidth = 370.dp.roundToPx()
-                    val targetHeight = 490.dp.roundToPx()
-                    val placeable = measurable.measure(
-                        constraints.copy(
-                            minWidth = targetWidth,
-                            maxWidth = targetWidth,
-                            minHeight = targetHeight,
-                            maxHeight = targetHeight
-                        )
-                    )
-                    layout(0, 0) {
-                        placeable.placeRelative(
-                            x = -targetWidth + 14.dp.roundToPx(),
-                            y = (-110).dp.roundToPx() // Spiky hair extends gracefully above top edge
-                        )
-                    }
-                }
-        )
-
         // 3. TOTAL EXPENSES TILE: Rendered explicitly ON TOP of Kakashi's flak jacket
         Box(
             modifier = Modifier
@@ -207,10 +220,10 @@ fun KakashiMainBalanceCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFF1A050A)) // Solid dark Sharingan Crimson surface
-                    .border(1.dp, Color(0xFFE11D48), RoundedCornerShape(16.dp))
-                    .padding(10.dp),
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color(0xFF1A050A)) // Solid dark Sharingan Crimson surface
+                .border(1.dp, Color(0xFFE11D48), RoundedCornerShape(16.dp))
+                .padding(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
