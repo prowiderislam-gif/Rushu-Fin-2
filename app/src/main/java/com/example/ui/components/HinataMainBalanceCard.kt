@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import com.example.R
 import com.example.ui.theme.*
 import com.example.util.indianNumber
+import java.text.DecimalFormat
 
 @Composable
 fun HinataMainBalanceCard(
@@ -39,6 +40,15 @@ fun HinataMainBalanceCard(
     val theme = LocalAppTheme.current
     val isHinataTheme = theme == AppTheme.HINATA
     val isDefaultTheme = theme == AppTheme.DEFAULT
+
+    // Format balance: Standard Indian system up to 10 Lakhs, then uses 'k' format after 10 Lakhs
+    val formattedBalance = if (kotlin.math.abs(liveBalance) >= 1_000_000.0) {
+        val thousands = liveBalance / 1_000.0
+        val kFormat = DecimalFormat("##,##,##,##0.#")
+        "${kFormat.format(thousands)}k"
+    } else {
+        indianNumber(liveBalance)
+    }
 
     // Outer Container
     Box(
@@ -72,8 +82,7 @@ fun HinataMainBalanceCard(
                     shape = RoundedCornerShape(24.dp)
                 )
         ) {
-            // 1. GIANT HINATA: Placed behind the Bottom "Total Expenses" card, but on top of card canvas
-            // Using layout(0, 0) reports ZERO height to the parent Box so there is ZERO extra bottom gap!
+            // 1. GIANT HINATA: Placed behind text & bottom cards
             if (isHinataTheme) {
                 Image(
                     painter = painterResource(id = R.drawable.hinata_corner),
@@ -95,22 +104,22 @@ fun HinataMainBalanceCard(
                             layout(0, 0) {
                                 placeable.placeRelative(
                                     x = -targetWidth + 24.dp.roundToPx(),
-                                    y = (-118).dp.roundToPx() // Reaches right up under the TIER 2 button
+                                    y = (-118).dp.roundToPx()
                                 )
                             }
                         }
                 )
             }
 
-            // 2. Card Content (Rendered in front of Hinata so "Total Expenses" sits ON TOP of her body)
+            // 2. Card Content: Rendered on top of Hinata
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(20.dp)
             ) {
-                // Header Row (Constrained width in Hinata theme so text stays cleanly on the left)
+                // Header Row
                 Row(
-                    modifier = if (isHinataTheme) Modifier.fillMaxWidth(0.48f) else Modifier.fillMaxWidth(),
+                    modifier = if (isHinataTheme) Modifier.fillMaxWidth(0.50f) else Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -168,13 +177,15 @@ fun HinataMainBalanceCard(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Big Live Balance Number
+                // Big Live Balance Number: Single line extending across over Hinata
                 Text(
-                    text = "₹ ${indianNumber(liveBalance)}",
-                    fontSize = 36.sp,
+                    text = "₹ $formattedBalance",
+                    fontSize = if (formattedBalance.length > 12) 28.sp else 34.sp,
                     fontWeight = FontWeight.ExtraBold,
+                    maxLines = 1,
+                    softWrap = false,
                     color = if (isHinataTheme) NeonMintGreen else (if (isSurplus) NeonGreen else NeonRed),
-                    modifier = if (isHinataTheme) Modifier.fillMaxWidth(0.48f) else Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 Text(
@@ -183,7 +194,7 @@ fun HinataMainBalanceCard(
                     fontFamily = FontFamily.Monospace,
                     color = if (isHinataTheme) HinataPurpleLight.copy(alpha = 0.65f) else TextMuted,
                     maxLines = 2,
-                    modifier = (if (isHinataTheme) Modifier.fillMaxWidth(0.48f) else Modifier.fillMaxWidth())
+                    modifier = (if (isHinataTheme) Modifier.fillMaxWidth(0.60f) else Modifier.fillMaxWidth())
                         .padding(top = 4.dp)
                 )
 
@@ -191,7 +202,7 @@ fun HinataMainBalanceCard(
                 ThemedDivider()
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Bottom Income & Expenses Row — Rendered ON TOP of Hinata's jacket!
+                // Bottom Income & Expenses Row — Sits ON TOP of Hinata's jacket!
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -203,7 +214,7 @@ fun HinataMainBalanceCard(
                             .clip(RoundedCornerShape(16.dp))
                             .background(
                                 when {
-                                    isHinataTheme -> Color(0xFF1B0733) // Solid violet so it sits crisply on top
+                                    isHinataTheme -> Color(0xFF1B0733)
                                     isDefaultTheme -> Color(0xFF092418)
                                     else -> Color(0xFF131C2E)
                                 }
@@ -259,7 +270,7 @@ fun HinataMainBalanceCard(
                             .clip(RoundedCornerShape(16.dp))
                             .background(
                                 when {
-                                    isHinataTheme -> Color(0xFF1B0733) // Solid violet so her jacket flows cleanly behind
+                                    isHinataTheme -> Color(0xFF1B0733)
                                     isDefaultTheme -> Color(0xFF260A13)
                                     else -> Color(0xFF131C2E)
                                 }
