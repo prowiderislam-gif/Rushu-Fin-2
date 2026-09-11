@@ -85,7 +85,7 @@ fun KakashiMainBalanceCard(
 
                 // Subtitle: "愛しいシュヘラ" in soft ice-cyan
                 Text(
-                    text = "愛しいシュヘラ",
+                    text = "写輪眼のカカシ",
                     fontSize = 11.sp,
                     color = Color(0xFF648DAF),
                     modifier = Modifier.padding(top = 2.dp)
