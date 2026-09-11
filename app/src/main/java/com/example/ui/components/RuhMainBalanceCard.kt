@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import com.example.R
 import com.example.ui.theme.*
 import com.example.util.indianNumber
+import java.text.DecimalFormat
 
 @SuppressLint("DiscouragedApi")
 @Composable
@@ -44,6 +45,15 @@ fun RuhMainBalanceCard(
     val ruhResId = remember(context) {
         val resId = context.resources.getIdentifier("ruh_corner", "drawable", context.packageName)
         if (resId != 0) resId else R.drawable.rushu_fin_logo
+    }
+
+    // Format balance: Standard Indian system up to 10 Lakhs, then uses 'k' format after 10 Lakhs
+    val formattedBalance = if (kotlin.math.abs(liveBalance) >= 1_000_000.0) {
+        val thousands = liveBalance / 1_000.0
+        val kFormat = DecimalFormat("##,##,##,##0.#")
+        "${kFormat.format(thousands)}k"
+    } else {
+        indianNumber(liveBalance)
     }
 
     Box(
@@ -71,7 +81,6 @@ fun RuhMainBalanceCard(
         )
 
         // 2. RUH / ITACHI CHARACTER ARTWORK (Rendered BEFORE texts/buttons so everything sits ON TOP)
-        // Positioned towards the right edge of the screen
         Image(
             painter = painterResource(id = ruhResId),
             contentDescription = "Itachi Crows",
@@ -90,7 +99,6 @@ fun RuhMainBalanceCard(
                         )
                     )
                     layout(0, 0) {
-                        // Offset: shifted rightwards towards edge (+50dp more to the right than before)
                         placeable.placeRelative(
                             x = -targetWidth + 56.dp.roundToPx(),
                             y = (-105).dp.roundToPx()
@@ -146,13 +154,15 @@ fun RuhMainBalanceCard(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Big Neon Blood Red Balance Number (On Top)
+            // Big Neon Blood Red Balance Number (Single line extending across over Itachi)
             Text(
-                text = "₹ ${indianNumber(liveBalance)}",
-                fontSize = 36.sp,
+                text = "₹ $formattedBalance",
+                fontSize = if (formattedBalance.length > 12) 28.sp else 34.sp,
                 fontWeight = FontWeight.ExtraBold,
+                maxLines = 1,
+                softWrap = false,
                 color = RuhBloodRed,
-                modifier = Modifier.fillMaxWidth(0.55f)
+                modifier = Modifier.fillMaxWidth()
             )
 
             // High Contrast Formula Text (Light glowing rose-white for sharp contrast against dark smoke)
@@ -161,10 +171,10 @@ fun RuhMainBalanceCard(
                 fontSize = 10.sp,
                 fontFamily = FontFamily.Monospace,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFFFFCDD2), // High contrast readable color
+                color = Color(0xFFFFCDD2),
                 maxLines = 2,
                 modifier = Modifier
-                    .fillMaxWidth(0.55f)
+                    .fillMaxWidth(0.60f)
                     .padding(top = 4.dp)
             )
 
