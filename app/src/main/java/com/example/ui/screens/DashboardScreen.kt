@@ -129,6 +129,7 @@ import com.example.ui.components.ThemedDivider
 import com.example.ui.components.neonTextStyle
 import com.example.ui.components.HinataMainBalanceCard
 import com.example.ui.components.KakashiMainBalanceCard
+import com.example.ui.components.BumblebeeMainBalanceCard
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.FinanceUiState
 import com.example.ui.viewmodel.FinanceViewModel
@@ -220,6 +221,7 @@ fun DashboardScreen(
 
     val isHinata = uiState.themeMode == AppTheme.HINATA
     val isKakashi = uiState.themeMode == AppTheme.KAKASHI
+    val isBumblebee = uiState.themeMode == AppTheme.BUMBLEBEE
 
     Box(
         modifier = modifier
@@ -261,6 +263,14 @@ fun DashboardScreen(
                 when (uiState.themeMode) {
                     AppTheme.KAKASHI -> {
                         KakashiMainBalanceCard(
+                            liveBalance = uiState.liveBalance,
+                            totalIncome = uiState.totalIncome,
+                            totalExpenses = uiState.totalExpense,
+                            formulaText = formulaText
+                        )
+                    }
+                    AppTheme.BUMBLEBEE -> {
+                        BumblebeeMainBalanceCard(
                             liveBalance = uiState.liveBalance,
                             totalIncome = uiState.totalIncome,
                             totalExpenses = uiState.totalExpense,
@@ -347,7 +357,8 @@ fun DashboardScreen(
             }
         }
 
-        // Falling petals ONLY in Hinata's theme. Kakashi theme is 100% clean & particle-free.
+        // Falling petals ONLY in Hinata's theme.
+        // Kakashi & Bumblebee keep a clean, distraction-free metallic glass canvas!
         if (isHinata) {
             FloatingPetalsOverlay(
                 petalColor = NeonCyan,
@@ -548,6 +559,7 @@ fun AppHeader(
     val theme = LocalAppTheme.current
     val isHinata = theme == AppTheme.HINATA
     val isKakashi = theme == AppTheme.KAKASHI
+    val isBumblebee = theme == AppTheme.BUMBLEBEE
 
     Row(
         modifier = modifier
@@ -567,6 +579,7 @@ fun AppHeader(
                     .border(
                         1.5.dp,
                         when {
+                            isBumblebee -> BumblebeeCardBorder
                             isKakashi -> KakashiCardBorder
                             isHinata -> HinataPurpleLight
                             else -> NeonCyan
@@ -575,6 +588,7 @@ fun AppHeader(
                     )
                     .background(
                         when {
+                            isBumblebee -> BumblebeeSurface
                             isKakashi -> KakashiSurface
                             isHinata -> HinataSurface
                             else -> Color(0xFF101014)
@@ -595,6 +609,7 @@ fun AppHeader(
                         text = "RUSHU FIN",
                         style = neonTextStyle(
                             when {
+                                isBumblebee -> BumblebeeGold
                                 isKakashi -> KakashiBalanceBlue
                                 isHinata -> HinataPurpleLight
                                 else -> NeonCyan
@@ -604,7 +619,10 @@ fun AppHeader(
                             glowRadius = 16f
                         )
                     )
-                    if (isKakashi) {
+                    if (isBumblebee) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = "🏎️", fontSize = 16.sp)
+                    } else if (isKakashi) {
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(text = "⚡", fontSize = 16.sp)
                     } else if (isHinata) {
@@ -615,6 +633,7 @@ fun AppHeader(
                 Text(
                     text = "Personal Finance & Liability Tracking",
                     color = when {
+                        isBumblebee -> Color(0xFFD97706)
                         isKakashi -> Color(0xFF8FA3BF)
                         isHinata -> HinataPurpleMuted
                         else -> TextSecondary
@@ -647,12 +666,12 @@ fun AppHeader(
                     Icon(
                         imageVector = if (isAdminMode) Icons.Default.LockOpen else Icons.Default.Lock,
                         contentDescription = null,
-                        tint = if (isAdminMode) NeonRed else (if (isHinata) HinataPurpleLight else (if (isKakashi) KakashiFixedBlue else TextMuted)),
+                        tint = if (isAdminMode) NeonRed else (if (isHinata) HinataPurpleLight else (if (isBumblebee) BumblebeeFixedGold else (if (isKakashi) KakashiFixedBlue else TextMuted))),
                         modifier = Modifier.size(14.dp)
                     )
                     Text(
                         text = if (isAdminMode) "ADMIN ON" else "TIER 2",
-                        color = if (isAdminMode) NeonRed else (if (isHinata) HinataPurpleLight else (if (isKakashi) Color(0xFFE2E8F0) else TextSecondary)),
+                        color = if (isAdminMode) NeonRed else (if (isHinata) HinataPurpleLight else (if (isBumblebee) BumblebeeFixedGold else (if (isKakashi) Color(0xFFE2E8F0) else TextSecondary))),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -671,7 +690,7 @@ fun AppHeader(
                 Icon(
                     imageVector = if (googleEmail != null) Icons.Default.CloudDone else Icons.Default.Settings,
                     contentDescription = "Settings & Cloud Sync",
-                    tint = if (googleEmail != null) (if (isKakashi) KakashiBalanceBlue else (if (isHinata) NeonMintGreen else NeonGreen)) else (if (isKakashi) Color(0xFFE2E8F0) else (if (isHinata) HinataPurpleLight else TextSecondary)),
+                    tint = if (googleEmail != null) (if (isBumblebee) BumblebeeGold else (if (isKakashi) KakashiBalanceBlue else (if (isHinata) NeonMintGreen else NeonGreen))) else (if (isBumblebee) BumblebeeGold else (if (isKakashi) Color(0xFFE2E8F0) else (if (isHinata) HinataPurpleLight else TextSecondary))),
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -693,13 +712,16 @@ fun SplitBalanceRow(
     val theme = LocalAppTheme.current
     val isHinata = theme == AppTheme.HINATA
     val isKakashi = theme == AppTheme.KAKASHI
+    val isBumblebee = theme == AppTheme.BUMBLEBEE
     val isDebtFree = uiState.currentLiability <= 0.001
     val liabilityGlow = when {
+        isBumblebee -> if (isDebtFree) BumblebeeCardGlow else Color(0x66F97316)
         isKakashi -> if (isDebtFree) KakashiCardGlow else Color(0x66FF334B)
         isHinata -> HinataCardGlow
         else -> if (isDebtFree) NeonGreenGlow else NeonRedGlow
     }
     val liabilityNumColor = when {
+        isBumblebee -> if (isDebtFree) BumblebeeGold else BumblebeeFlameOrange
         isKakashi -> if (isDebtFree) KakashiBalanceBlue else KakashiSharinganRed
         isHinata -> RoseDeficit
         else -> if (isDebtFree) NeonGreen else NeonRed
@@ -717,6 +739,7 @@ fun SplitBalanceRow(
                 .testTag("fixed_initial_balance_card"),
             shape = RoundedCornerShape(20.dp),
             glowColor = when {
+                isBumblebee -> BumblebeeCardGlow
                 isKakashi -> KakashiCardGlow
                 isHinata -> HinataCardGlow
                 else -> NeonYellow
@@ -738,6 +761,7 @@ fun SplitBalanceRow(
                         text = "FIXED INITIAL",
                         style = neonTextStyle(
                             when {
+                                isBumblebee -> Color(0xFFFDE68A)
                                 isKakashi -> Color(0xFFBAE6FD)
                                 isHinata -> HinataGold
                                 else -> NeonYellow
@@ -750,7 +774,7 @@ fun SplitBalanceRow(
                     Icon(
                         imageVector = if (isAdminMode) Icons.Default.Edit else Icons.Default.Lock,
                         contentDescription = "Edit with Tier 2",
-                        tint = if (isAdminMode) (if (isKakashi) KakashiFixedBlue else (if (isHinata) HinataGold else NeonYellow)) else (if (isKakashi) Color(0xFF38BDF8) else (if (isHinata) HinataPurpleMuted else TextMuted)),
+                        tint = if (isAdminMode) (if (isBumblebee) BumblebeeFixedGold else (if (isKakashi) KakashiFixedBlue else (if (isHinata) HinataGold else NeonYellow))) else (if (isBumblebee) BumblebeeFixedGold else (if (isKakashi) Color(0xFF38BDF8) else (if (isHinata) HinataPurpleMuted else TextMuted))),
                         modifier = Modifier.size(15.dp)
                     )
                 }
@@ -759,6 +783,7 @@ fun SplitBalanceRow(
                     text = "${uiState.currencySymbol} ${indianNumber(uiState.initialBalance)}",
                     style = neonTextStyle(
                         when {
+                            isBumblebee -> BumblebeeFixedGold
                             isKakashi -> KakashiFixedBlue
                             isHinata -> HinataGold
                             else -> NeonYellow
@@ -772,6 +797,7 @@ fun SplitBalanceRow(
                 Text(
                     text = if (isAdminMode) "Tap to edit (Admin)" else "Tier 2 protected",
                     color = when {
+                        isBumblebee -> Color(0xFF92400E)
                         isKakashi -> Color(0xFF64748B)
                         isHinata -> HinataPurpleMuted.copy(alpha = 0.7f)
                         else -> TextMuted
@@ -815,6 +841,7 @@ fun SplitBalanceRow(
                         Surface(
                             shape = RoundedCornerShape(8.dp),
                             color = when {
+                                isBumblebee -> if (isDebtFree) BumblebeePillBg else Color(0xFF3B1203)
                                 isKakashi -> if (isDebtFree) KakashiPillBg else Color(0xFF26050A)
                                 isHinata -> HinataPillBg
                                 else -> if (isDebtFree) NeonGreen.copy(alpha = 0.2f) else NeonRed.copy(alpha = 0.2f)
@@ -822,6 +849,7 @@ fun SplitBalanceRow(
                             border = androidx.compose.foundation.BorderStroke(
                                 0.5.dp,
                                 when {
+                                    isBumblebee -> if (isDebtFree) BumblebeePillBorder else Color(0xFFEA580C)
                                     isKakashi -> if (isDebtFree) KakashiPillBorder else Color(0x99FF334B)
                                     isHinata -> HinataPillBorder
                                     else -> if (isDebtFree) NeonGreen.copy(alpha = 0.5f) else NeonRed.copy(alpha = 0.5f)
@@ -831,6 +859,7 @@ fun SplitBalanceRow(
                             Text(
                                 text = if (isDebtFree) "CLEAR" else "DEBT",
                                 color = when {
+                                    isBumblebee -> if (isDebtFree) BumblebeeGold else BumblebeeFlameOrange
                                     isKakashi -> if (isDebtFree) KakashiBalanceBlue else KakashiSharinganRed
                                     isHinata -> HinataPurpleLight
                                     else -> if (isDebtFree) NeonGreen else NeonRed
@@ -855,6 +884,7 @@ fun SplitBalanceRow(
                     Text(
                         text = "Tracked independently",
                         color = when {
+                            isBumblebee -> Color(0xFF92400E)
                             isKakashi -> Color(0xFF64748B)
                             isHinata -> HinataPurpleMuted.copy(alpha = 0.7f)
                             else -> TextMuted
@@ -879,6 +909,7 @@ fun NormalTransactionModule(
     val theme = LocalAppTheme.current
     val isHinata = theme == AppTheme.HINATA
     val isKakashi = theme == AppTheme.KAKASHI
+    val isBumblebee = theme == AppTheme.BUMBLEBEE
     var selectedType by remember { mutableStateOf("INCOME") }
     var amountText by remember { mutableStateOf("") }
     var descriptionText by remember { mutableStateOf("") }
@@ -890,6 +921,7 @@ fun NormalTransactionModule(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         glowColor = when {
+            isBumblebee -> BumblebeeCardGlow
             isKakashi -> KakashiCardGlow
             isHinata -> HinataCardGlow
             else -> if (isIncome) NeonGreenGlow else NeonRedGlow
@@ -910,6 +942,7 @@ fun NormalTransactionModule(
                     text = "RECORD TRANSACTION",
                     style = neonTextStyle(
                         when {
+                            isBumblebee -> BumblebeeGold
                             isKakashi -> Color.White
                             isHinata -> HinataPurpleLight
                             else -> NeonCyan
@@ -922,6 +955,7 @@ fun NormalTransactionModule(
                 Text(
                     text = "Main Financial Ledger",
                     color = when {
+                        isBumblebee -> Color(0xFFD97706)
                         isKakashi -> Color(0xFF8FA3BF)
                         isHinata -> HinataPurpleMuted
                         else -> TextMuted
@@ -938,6 +972,7 @@ fun NormalTransactionModule(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
                     .background(when {
+                        isBumblebee -> BumblebeeSurface
                         isKakashi -> KakashiSurface
                         isHinata -> HinataSurface
                         else -> SurfaceDark
@@ -952,6 +987,7 @@ fun NormalTransactionModule(
                         .background(
                             if (isIncome) {
                                 when {
+                                    isBumblebee -> BumblebeePillBg
                                     isKakashi -> KakashiPillBg
                                     isHinata -> HinataPillBg
                                     else -> NeonGreen.copy(alpha = 0.25f)
@@ -967,10 +1003,12 @@ fun NormalTransactionModule(
                         text = "+ive INCOME",
                         style = neonTextStyle(
                             if (isIncome) (when {
+                                isBumblebee -> BumblebeeIncomeGold
                                 isKakashi -> KakashiIncomeBlue
                                 isHinata -> NeonMintGreen
                                 else -> NeonGreen
                             }) else (when {
+                                isBumblebee -> Color(0xFF78350F)
                                 isKakashi -> Color(0xFF64748B)
                                 isHinata -> HinataPurpleMuted
                                 else -> TextSecondary
@@ -989,6 +1027,7 @@ fun NormalTransactionModule(
                         .background(
                             if (!isIncome) {
                                 when {
+                                    isBumblebee -> Color(0xFF3B1203)
                                     isKakashi -> Color(0xFF26050A)
                                     isHinata -> HinataPillBg
                                     else -> NeonRed.copy(alpha = 0.25f)
@@ -1004,10 +1043,12 @@ fun NormalTransactionModule(
                         text = "-ive EXPENSE",
                         style = neonTextStyle(
                             if (!isIncome) (when {
+                                isBumblebee -> BumblebeeFlameOrange
                                 isKakashi -> KakashiSharinganRed
                                 isHinata -> RoseDeficit
                                 else -> NeonRed
                             }) else (when {
+                                isBumblebee -> Color(0xFF78350F)
                                 isKakashi -> Color(0xFF64748B)
                                 isHinata -> HinataPurpleMuted
                                 else -> TextSecondary
@@ -1031,6 +1072,7 @@ fun NormalTransactionModule(
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = when {
+                        isBumblebee -> BumblebeeCardBorder
                         isKakashi -> KakashiCardBorder
                         isHinata -> HinataPurpleLight
                         else -> if (isIncome) NeonGreen else NeonRed
@@ -1038,7 +1080,7 @@ fun NormalTransactionModule(
                     unfocusedBorderColor = CardGlassBorder,
                     focusedTextColor = TextPrimary,
                     unfocusedTextColor = TextPrimary,
-                    cursorColor = if (isKakashi) KakashiBalanceBlue else (if (isHinata) HinataPurpleLight else NeonCyan)
+                    cursorColor = if (isBumblebee) BumblebeeGold else (if (isKakashi) KakashiBalanceBlue else (if (isHinata) HinataPurpleLight else NeonCyan))
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1056,6 +1098,7 @@ fun NormalTransactionModule(
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = when {
+                        isBumblebee -> BumblebeeCardBorder
                         isKakashi -> KakashiCardBorder
                         isHinata -> HinataPurpleLight
                         else -> if (isIncome) NeonGreen else NeonRed
@@ -1063,7 +1106,7 @@ fun NormalTransactionModule(
                     unfocusedBorderColor = CardGlassBorder,
                     focusedTextColor = TextPrimary,
                     unfocusedTextColor = TextPrimary,
-                    cursorColor = if (isKakashi) KakashiBalanceBlue else (if (isHinata) HinataPurpleLight else NeonCyan)
+                    cursorColor = if (isBumblebee) BumblebeeGold else (if (isKakashi) KakashiBalanceBlue else (if (isHinata) HinataPurpleLight else NeonCyan))
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1085,6 +1128,7 @@ fun NormalTransactionModule(
                         Icons.Default.Security,
                         contentDescription = null,
                         tint = when {
+                            isBumblebee -> Color(0xFF92400E)
                             isKakashi -> Color(0xFF64748B)
                             isHinata -> HinataPurpleMuted
                             else -> if (isIncome) NeonGreen else NeonRed
@@ -1093,6 +1137,7 @@ fun NormalTransactionModule(
                 },
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = when {
+                        isBumblebee -> BumblebeeCardBorder
                         isKakashi -> KakashiCardBorder
                         isHinata -> HinataPurpleLight
                         else -> if (isIncome) NeonGreen else NeonRed
@@ -1100,7 +1145,7 @@ fun NormalTransactionModule(
                     unfocusedBorderColor = CardGlassBorder,
                     focusedTextColor = TextPrimary,
                     unfocusedTextColor = TextPrimary,
-                    cursorColor = if (isKakashi) KakashiBalanceBlue else (if (isHinata) HinataPurpleLight else NeonCyan)
+                    cursorColor = if (isBumblebee) BumblebeeGold else (if (isKakashi) KakashiBalanceBlue else (if (isHinata) HinataPurpleLight else NeonCyan))
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1121,12 +1166,14 @@ fun NormalTransactionModule(
                 },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = when {
+                        isBumblebee -> BumblebeeButtonBg
                         isKakashi -> KakashiButtonBg
                         isHinata -> HinataButtonBg
                         else -> if (isIncome) NeonGreen else NeonRed
                     }
                 ),
                 border = when {
+                    isBumblebee -> androidx.compose.foundation.BorderStroke(1.dp, BumblebeePillBorder)
                     isKakashi -> androidx.compose.foundation.BorderStroke(1.dp, KakashiPillBorder)
                     isHinata -> androidx.compose.foundation.BorderStroke(1.dp, HinataPillBorder)
                     else -> null
@@ -1140,6 +1187,7 @@ fun NormalTransactionModule(
                 Text(
                     text = if (isIncome) "RECORD INCOME (+)" else "RECORD EXPENSE (-)",
                     color = when {
+                        isBumblebee -> BumblebeeGold
                         isKakashi -> KakashiIncomeBlue
                         isHinata -> HinataPurpleLight
                         else -> CanvasBackground
@@ -1164,6 +1212,7 @@ fun LiabilityManagementModule(
     val theme = LocalAppTheme.current
     val isHinata = theme == AppTheme.HINATA
     val isKakashi = theme == AppTheme.KAKASHI
+    val isBumblebee = theme == AppTheme.BUMBLEBEE
     var selectedAction by remember { mutableStateOf("ADD_LIABILITY") }
     var amountText by remember { mutableStateOf("") }
     var descriptionText by remember { mutableStateOf("") }
@@ -1175,6 +1224,7 @@ fun LiabilityManagementModule(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         glowColor = when {
+            isBumblebee -> BumblebeeCardGlow
             isKakashi -> KakashiCardGlow
             isHinata -> HinataCardGlow
             else -> if (isAdding) NeonRedGlow else NeonCyanGlow
@@ -1196,6 +1246,7 @@ fun LiabilityManagementModule(
                         text = "INDEPENDENT LIABILITY MODULE",
                         style = neonTextStyle(
                             when {
+                                isBumblebee -> BumblebeeGold
                                 isKakashi -> Color.White
                                 isHinata -> HinataPurpleLight
                                 else -> if (isAdding) NeonRed else NeonCyan
@@ -1208,6 +1259,7 @@ fun LiabilityManagementModule(
                     Text(
                         text = "Does NOT deduct or affect main live balance",
                         color = when {
+                            isBumblebee -> Color(0xFFD97706)
                             isKakashi -> Color(0xFF8FA3BF)
                             isHinata -> HinataPurpleMuted
                             else -> TextMuted
@@ -1225,6 +1277,7 @@ fun LiabilityManagementModule(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
                     .background(when {
+                        isBumblebee -> BumblebeeSurface
                         isKakashi -> KakashiSurface
                         isHinata -> HinataSurface
                         else -> SurfaceDark
@@ -1239,6 +1292,7 @@ fun LiabilityManagementModule(
                         .background(
                             if (isAdding) {
                                 when {
+                                    isBumblebee -> Color(0xFF3B1203)
                                     isKakashi -> Color(0xFF26050A)
                                     isHinata -> HinataPillBg
                                     else -> NeonRed.copy(alpha = 0.25f)
@@ -1254,10 +1308,12 @@ fun LiabilityManagementModule(
                         text = "+ ADD LIABILITY",
                         style = neonTextStyle(
                             if (isAdding) (when {
+                                isBumblebee -> BumblebeeFlameOrange
                                 isKakashi -> KakashiSharinganRed
                                 isHinata -> RoseDeficit
                                 else -> NeonRed
                             }) else (when {
+                                isBumblebee -> Color(0xFF78350F)
                                 isKakashi -> Color(0xFF64748B)
                                 isHinata -> HinataPurpleMuted
                                 else -> TextSecondary
@@ -1276,6 +1332,7 @@ fun LiabilityManagementModule(
                         .background(
                             if (!isAdding) {
                                 when {
+                                    isBumblebee -> BumblebeePillBg
                                     isKakashi -> KakashiPillBg
                                     isHinata -> HinataPillBg
                                     else -> NeonCyan.copy(alpha = 0.25f)
@@ -1291,10 +1348,12 @@ fun LiabilityManagementModule(
                         text = "- PAY/REDUCE DEBT",
                         style = neonTextStyle(
                             if (!isAdding) (when {
+                                isBumblebee -> BumblebeeIncomeGold
                                 isKakashi -> KakashiBalanceBlue
                                 isHinata -> NeonMintGreen
                                 else -> NeonCyan
                             }) else (when {
+                                isBumblebee -> Color(0xFF78350F)
                                 isKakashi -> Color(0xFF64748B)
                                 isHinata -> HinataPurpleMuted
                                 else -> TextSecondary
@@ -1318,6 +1377,7 @@ fun LiabilityManagementModule(
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = when {
+                        isBumblebee -> BumblebeeCardBorder
                         isKakashi -> KakashiCardBorder
                         isHinata -> HinataPurpleLight
                         else -> if (isAdding) NeonRed else NeonCyan
@@ -1325,7 +1385,7 @@ fun LiabilityManagementModule(
                     unfocusedBorderColor = CardGlassBorder,
                     focusedTextColor = TextPrimary,
                     unfocusedTextColor = TextPrimary,
-                    cursorColor = if (isKakashi) KakashiBalanceBlue else (if (isHinata) HinataPurpleLight else NeonCyan)
+                    cursorColor = if (isBumblebee) BumblebeeGold else (if (isKakashi) KakashiBalanceBlue else (if (isHinata) HinataPurpleLight else NeonCyan))
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1343,6 +1403,7 @@ fun LiabilityManagementModule(
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = when {
+                        isBumblebee -> BumblebeeCardBorder
                         isKakashi -> KakashiCardBorder
                         isHinata -> HinataPurpleLight
                         else -> if (isAdding) NeonRed else NeonCyan
@@ -1350,7 +1411,7 @@ fun LiabilityManagementModule(
                     unfocusedBorderColor = CardGlassBorder,
                     focusedTextColor = TextPrimary,
                     unfocusedTextColor = TextPrimary,
-                    cursorColor = if (isKakashi) KakashiBalanceBlue else (if (isHinata) HinataPurpleLight else NeonCyan)
+                    cursorColor = if (isBumblebee) BumblebeeGold else (if (isKakashi) KakashiBalanceBlue else (if (isHinata) HinataPurpleLight else NeonCyan))
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1372,6 +1433,7 @@ fun LiabilityManagementModule(
                         Icons.Default.Security,
                         contentDescription = null,
                         tint = when {
+                            isBumblebee -> Color(0xFF92400E)
                             isKakashi -> Color(0xFF64748B)
                             isHinata -> HinataPurpleMuted
                             else -> if (isAdding) NeonRed else NeonCyan
@@ -1380,6 +1442,7 @@ fun LiabilityManagementModule(
                 },
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = when {
+                        isBumblebee -> BumblebeeCardBorder
                         isKakashi -> KakashiCardBorder
                         isHinata -> HinataPurpleLight
                         else -> if (isAdding) NeonRed else NeonCyan
@@ -1387,7 +1450,7 @@ fun LiabilityManagementModule(
                     unfocusedBorderColor = CardGlassBorder,
                     focusedTextColor = TextPrimary,
                     unfocusedTextColor = TextPrimary,
-                    cursorColor = if (isKakashi) KakashiBalanceBlue else (if (isHinata) HinataPurpleLight else NeonCyan)
+                    cursorColor = if (isBumblebee) BumblebeeGold else (if (isKakashi) KakashiBalanceBlue else (if (isHinata) HinataPurpleLight else NeonCyan))
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1408,12 +1471,14 @@ fun LiabilityManagementModule(
                 },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = when {
+                        isBumblebee -> BumblebeeButtonBg
                         isKakashi -> KakashiButtonBg
                         isHinata -> HinataButtonBg
                         else -> if (isAdding) NeonRed else NeonCyan
                     }
                 ),
                 border = when {
+                    isBumblebee -> androidx.compose.foundation.BorderStroke(1.dp, BumblebeePillBorder)
                     isKakashi -> androidx.compose.foundation.BorderStroke(1.dp, KakashiPillBorder)
                     isHinata -> androidx.compose.foundation.BorderStroke(1.dp, HinataPillBorder)
                     else -> null
@@ -1427,6 +1492,7 @@ fun LiabilityManagementModule(
                 Text(
                     text = if (isAdding) "RECORD NEW DEBT (+)" else "RECORD DEBT PAYMENT (-)",
                     color = when {
+                        isBumblebee -> BumblebeeGold
                         isKakashi -> KakashiBalanceBlue
                         isHinata -> HinataPurpleLight
                         else -> CanvasBackground
@@ -1458,6 +1524,7 @@ fun AuditLedgersSection(
     val theme = LocalAppTheme.current
     val isHinata = theme == AppTheme.HINATA
     val isKakashi = theme == AppTheme.KAKASHI
+    val isBumblebee = theme == AppTheme.BUMBLEBEE
     var selectedTab by remember { mutableIntStateOf(0) }
 
     Column(modifier = modifier.fillMaxWidth()) {
@@ -1470,6 +1537,7 @@ fun AuditLedgersSection(
                 text = "PERMANENT AUDIT LEDGERS",
                 style = neonTextStyle(
                     when {
+                        isBumblebee -> BumblebeeGold
                         isKakashi -> Color.White
                         isHinata -> HinataPurpleLight
                         else -> NeonCyan
@@ -1486,7 +1554,7 @@ fun AuditLedgersSection(
             ) {
                 Text(
                     text = if (isAdminMode) "ADMIN OVERRIDE ACTIVE" else "IMMUTABLE AUDIT",
-                    color = if (isAdminMode) NeonRed else (if (isKakashi) Color(0xFFBAE6FD) else (if (isHinata) HinataPurpleLight else TextSecondary)),
+                    color = if (isAdminMode) NeonRed else (if (isBumblebee) BumblebeeIncomeGold else (if (isKakashi) Color(0xFFBAE6FD) else (if (isHinata) HinataPurpleLight else TextSecondary))),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
@@ -1502,6 +1570,7 @@ fun AuditLedgersSection(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
                     .background(when {
+                        isBumblebee -> BumblebeeSurface
                         isKakashi -> KakashiSurface
                         isHinata -> HinataSurface
                         else -> SurfaceDark
@@ -1514,7 +1583,7 @@ fun AuditLedgersSection(
                         .weight(1f)
                         .clip(RoundedCornerShape(10.dp))
                         .background(
-                            if (selectedTab == 0) (if (isKakashi) KakashiPillBg else (if (isHinata) HinataPillBg else CardGlass)) else Color.Transparent
+                            if (selectedTab == 0) (if (isBumblebee) BumblebeePillBg else (if (isKakashi) KakashiPillBg else (if (isHinata) HinataPillBg else CardGlass))) else Color.Transparent
                         )
                         .clickable { selectedTab = 0 }
                         .padding(vertical = 8.dp)
@@ -1523,7 +1592,7 @@ fun AuditLedgersSection(
                 ) {
                     Text(
                         text = "Main Ledger (${transactions.size})",
-                        color = if (selectedTab == 0) (if (isKakashi) KakashiIncomeBlue else (if (isHinata) NeonMintGreen else NeonGreen)) else (if (isKakashi) Color(0xFF64748B) else (if (isHinata) HinataPurpleMuted else TextSecondary)),
+                        color = if (selectedTab == 0) (if (isBumblebee) BumblebeeGold else (if (isKakashi) KakashiIncomeBlue else (if (isHinata) NeonMintGreen else NeonGreen))) else (if (isBumblebee) Color(0xFF78350F) else (if (isKakashi) Color(0xFF64748B) else (if (isHinata) HinataPurpleMuted else TextSecondary))),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -1534,7 +1603,7 @@ fun AuditLedgersSection(
                         .weight(1f)
                         .clip(RoundedCornerShape(10.dp))
                         .background(
-                            if (selectedTab == 1) (if (isKakashi) KakashiPillBg else (if (isHinata) HinataPillBg else CardGlass)) else Color.Transparent
+                            if (selectedTab == 1) (if (isBumblebee) BumblebeePillBg else (if (isKakashi) KakashiPillBg else (if (isHinata) HinataPillBg else CardGlass))) else Color.Transparent
                         )
                         .clickable { selectedTab = 1 }
                         .padding(vertical = 8.dp)
@@ -1543,7 +1612,7 @@ fun AuditLedgersSection(
                 ) {
                     Text(
                         text = "Liability Ledger (${liabilities.size})",
-                        color = if (selectedTab == 1) (if (isKakashi) KakashiBalanceBlue else (if (isHinata) HinataPurpleLight else NeonCyan)) else (if (isKakashi) Color(0xFF64748B) else (if (isHinata) HinataPurpleMuted else TextSecondary)),
+                        color = if (selectedTab == 1) (if (isBumblebee) BumblebeeGold else (if (isKakashi) KakashiBalanceBlue else (if (isHinata) HinataPurpleLight else NeonCyan))) else (if (isBumblebee) Color(0xFF78350F) else (if (isKakashi) Color(0xFF64748B) else (if (isHinata) HinataPurpleMuted else TextSecondary))),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -1603,15 +1672,18 @@ fun TransactionItemCard(
     val theme = LocalAppTheme.current
     val isHinata = theme == AppTheme.HINATA
     val isKakashi = theme == AppTheme.KAKASHI
+    val isBumblebee = theme == AppTheme.BUMBLEBEE
     val isIncome = transaction.type.equals("INCOME", ignoreCase = true)
     val amountColor = if (isIncome) {
         when {
+            isBumblebee -> BumblebeeIncomeGold
             isKakashi -> KakashiIncomeBlue
             isHinata -> NeonMintGreen
             else -> NeonGreen
         }
     } else {
         when {
+            isBumblebee -> BumblebeeFlameOrange
             isKakashi -> KakashiSharinganRed
             isHinata -> RoseDeficit
             else -> NeonRed
@@ -1622,6 +1694,7 @@ fun TransactionItemCard(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
         glowColor = when {
+            isBumblebee -> BumblebeeCardGlow
             isKakashi -> KakashiCardGlow
             isHinata -> HinataCardGlow
             else -> amountColor.copy(alpha = 0.25f)
@@ -1645,7 +1718,7 @@ fun TransactionItemCard(
                         .width(3.dp)
                         .height(36.dp)
                         .clip(CircleShape)
-                        .background(if (isKakashi) amountColor else (if (isHinata) HinataPurpleLight else amountColor))
+                        .background(if (isBumblebee) amountColor else (if (isKakashi) amountColor else (if (isHinata) HinataPurpleLight else amountColor)))
                 )
 
                 Column(modifier = Modifier.weight(1f)) {
@@ -1653,6 +1726,7 @@ fun TransactionItemCard(
                         text = transaction.description,
                         style = neonTextStyle(
                             when {
+                                isBumblebee -> Color.White
                                 isKakashi -> Color.White
                                 isHinata -> HinataPurpleLight
                                 else -> amountColor
@@ -1668,6 +1742,7 @@ fun TransactionItemCard(
                     Text(
                         text = "${transaction.dateString} • ${transaction.timeString}",
                         color = when {
+                            isBumblebee -> Color(0xFF92400E)
                             isKakashi -> Color(0xFF64748B)
                             isHinata -> HinataPurpleMuted
                             else -> TextMuted
@@ -1711,15 +1786,18 @@ fun LiabilityItemCard(
     val theme = LocalAppTheme.current
     val isHinata = theme == AppTheme.HINATA
     val isKakashi = theme == AppTheme.KAKASHI
+    val isBumblebee = theme == AppTheme.BUMBLEBEE
     val isAdd = liability.actionType.equals("ADD_LIABILITY", ignoreCase = true)
     val amountColor = if (isAdd) {
         when {
+            isBumblebee -> BumblebeeFlameOrange
             isKakashi -> KakashiSharinganRed
             isHinata -> RoseDeficit
             else -> NeonRed
         }
     } else {
         when {
+            isBumblebee -> BumblebeeIncomeGold
             isKakashi -> KakashiBalanceBlue
             isHinata -> NeonMintGreen
             else -> NeonCyan
@@ -1730,6 +1808,7 @@ fun LiabilityItemCard(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
         glowColor = when {
+            isBumblebee -> BumblebeeCardGlow
             isKakashi -> KakashiCardGlow
             isHinata -> HinataCardGlow
             else -> amountColor.copy(alpha = 0.25f)
@@ -1753,7 +1832,7 @@ fun LiabilityItemCard(
                         .width(3.dp)
                         .height(36.dp)
                         .clip(CircleShape)
-                        .background(if (isKakashi) amountColor else (if (isHinata) HinataPurpleLight else amountColor))
+                        .background(if (isBumblebee) amountColor else (if (isKakashi) amountColor else (if (isHinata) HinataPurpleLight else amountColor)))
                 )
 
                 Column(modifier = Modifier.weight(1f)) {
@@ -1762,6 +1841,7 @@ fun LiabilityItemCard(
                             text = liability.description,
                             style = neonTextStyle(
                                 when {
+                                    isBumblebee -> Color.White
                                     isKakashi -> Color.White
                                     isHinata -> HinataPurpleLight
                                     else -> amountColor
@@ -1778,6 +1858,7 @@ fun LiabilityItemCard(
                     Text(
                         text = "${if (isAdd) "Added Debt" else "Payment Made"} • ${liability.dateString} • ${liability.timeString}",
                         color = when {
+                            isBumblebee -> Color(0xFF92400E)
                             isKakashi -> Color(0xFF64748B)
                             isHinata -> HinataPurpleMuted
                             else -> TextMuted
@@ -2769,6 +2850,13 @@ fun SettingsAndCloudSyncDialog(
                             description = "Pitch black dark theme, giant Kakashi artwork, razor-sharp Chidori cyan borders & Sharingan red.",
                             selected = uiState.themeMode == AppTheme.KAKASHI,
                             onClick = { onSelectTheme(AppTheme.KAKASHI) }
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        ThemeOptionRow(
+                            title = "🏎️ Bumblebee (Metallic Amber Gold)",
+                            description = "Pitch-black dark theme, shiny metallic gold car body, glowing amber edges & flame accents.",
+                            selected = uiState.themeMode == AppTheme.BUMBLEBEE,
+                            onClick = { onSelectTheme(AppTheme.BUMBLEBEE) }
                         )
                     }
                 }
