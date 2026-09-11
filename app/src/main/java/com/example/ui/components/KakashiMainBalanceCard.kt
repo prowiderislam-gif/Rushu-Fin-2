@@ -36,11 +36,11 @@ fun KakashiMainBalanceCard(
     isSurplus: Boolean = liveBalance >= 0,
     modifier: Modifier = Modifier
 ) {
-    // Outer Container: Exact same proportions and height as Hinata's card
+    // Outer Container: Exactly identical sizing and proportions to Hinata's card
     Box(
         modifier = modifier.fillMaxWidth()
     ) {
-        // 1. The Main Balance Card Box (Pitch-black obsidian surface + Razor-sharp Chidori Cyan glow)
+        // 1. The Main Balance Card Box (Pitch-black midnight surface + Razor-sharp Chidori Cyan glow)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -65,42 +65,25 @@ fun KakashiMainBalanceCard(
                     .fillMaxWidth()
                     .padding(20.dp)
             ) {
-                // Header Row: Horizontal Layout + Standard Horizontal SURPLUS Pill
+                // Header Title: Thematic "CURRENT BALANCE JUTSU" (Surplus completely removed!)
                 Row(
-                    modifier = Modifier.fillMaxWidth(0.50f),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
                         text = "CURRENT BALANCE JUTSU",
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp,
-                        color = Color.White
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = 1.2.sp,
+                        color = KakashiBalanceBlue
                     )
-
-                    // Horizontal Pill Badge exactly like reference screenshot
-                    Box(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(if (isSurplus) KakashiPillBg else Color(0xFF26050AL))
-                            .border(
-                                1.dp,
-                                if (isSurplus) KakashiPillBorder else Color(0x99FF334B),
-                                CircleShape
-                            )
-                            .padding(horizontal = 8.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = if (isSurplus) "SURPLUS" else "DEFICIT",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isSurplus) KakashiBalanceBlue else KakashiSharinganRed
-                        )
-                    }
+                    Text(
+                        text = "⚡",
+                        fontSize = 12.sp
+                    )
                 }
 
-                // Reference text: "愛しいシュヘラ" in soft ice-cyan
+                // Subtitle: "愛しいシュヘラ" in soft ice-cyan
                 Text(
                     text = "愛しいシュヘラ",
                     fontSize = 11.sp,
@@ -181,14 +164,13 @@ fun KakashiMainBalanceCard(
                         }
                     }
 
-                    // Total Expenses Placeholder spacer so right half has equal column width
+                    // Spacer so the left column takes exactly 50%
                     Spacer(modifier = Modifier.weight(1f))
                 }
             }
         }
 
-        // 2. KAKASHI ARTWORK: Spiky silver hair flows slightly OUTSIDE the card box!
-        // Not cropped by corner radius or border.
+        // 2. KAKASHI ARTWORK: Spiky hair naturally extends OUTSIDE the card box without cropping
         Image(
             painter = painterResource(id = R.drawable.kakashi_corner),
             contentDescription = "Kakashi Hatake",
@@ -209,13 +191,13 @@ fun KakashiMainBalanceCard(
                     layout(0, 0) {
                         placeable.placeRelative(
                             x = -targetWidth + 14.dp.roundToPx(),
-                            y = (-110).dp.roundToPx() // Spiky hair naturally extends up past top edge
+                            y = (-110).dp.roundToPx() // Spiky hair extends gracefully above top edge
                         )
                     }
                 }
         )
 
-        // 3. TOTAL EXPENSES TILE: Rendered explicitly ON TOP of Kakashi's flak jacket!
+        // 3. TOTAL EXPENSES TILE: Rendered explicitly ON TOP of Kakashi's flak jacket
         Box(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
