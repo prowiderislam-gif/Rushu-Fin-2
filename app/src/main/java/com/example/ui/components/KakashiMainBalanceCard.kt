@@ -36,16 +36,16 @@ fun KakashiMainBalanceCard(
     isSurplus: Boolean = liveBalance >= 0,
     modifier: Modifier = Modifier
 ) {
-    // Outer Container: Exactly identical sizing and proportions to Hinata's card
+    // Outer Container: Exact same proportions and height as Hinata's card
     Box(
         modifier = modifier.fillMaxWidth()
     ) {
-        // 1. The Main Balance Card Box (Strictly matches Hinata's height and compact padding)
+        // 1. The Main Balance Card Box (Pitch-black obsidian surface + Razor-sharp Chidori Cyan glow)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .shadow(
-                    elevation = 18.dp,
+                    elevation = 20.dp,
                     shape = RoundedCornerShape(24.dp),
                     ambientColor = KakashiCardGlow,
                     spotColor = KakashiCardGlow
@@ -55,39 +55,38 @@ fun KakashiMainBalanceCard(
                     shape = RoundedCornerShape(24.dp)
                 )
                 .border(
-                    width = 1.2.dp,
+                    width = 1.3.dp,
                     color = KakashiCardBorder,
                     shape = RoundedCornerShape(24.dp)
                 )
         ) {
-            // Content Column: Standard 20dp padding, strictly identical to Hinata
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(20.dp)
             ) {
-                // Header Row: Horizontal layout with normal horizontal SURPLUS pill
+                // Header Row: Horizontal Layout + Standard Horizontal SURPLUS Pill
                 Row(
                     modifier = Modifier.fillMaxWidth(0.50f),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "CURRENT BALANCE JUTSU",
+                        text = "MAIN LIVE BALANCE",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp,
-                        color = KakashiElectricCyan
+                        color = Color.White
                     )
 
-                    // Horizontal Normal Surplus / Deficit Pill Badge
+                    // Horizontal Pill Badge exactly like reference screenshot
                     Box(
                         modifier = Modifier
                             .clip(CircleShape)
-                            .background(if (isSurplus) KakashiPillBg else Color(0x66450A0A))
+                            .background(if (isSurplus) KakashiPillBg else Color(0xFF26050AL))
                             .border(
                                 1.dp,
-                                if (isSurplus) KakashiPillBorder else Color(0x80FF3366),
+                                if (isSurplus) KakashiPillBorder else Color(0x99FF334B),
                                 CircleShape
                             )
                             .padding(horizontal = 8.dp, vertical = 2.dp)
@@ -96,26 +95,27 @@ fun KakashiMainBalanceCard(
                             text = if (isSurplus) "SURPLUS" else "DEFICIT",
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (isSurplus) KakashiElectricCyan else KakashiSharinganRed
+                            color = if (isSurplus) KakashiBalanceBlue else KakashiSharinganRed
                         )
                     }
                 }
 
+                // Reference text: "愛しいシュヘラ" in soft ice-cyan
                 Text(
-                    text = "写輪眼のカカシ",
-                    fontSize = 10.sp,
-                    color = KakashiIceBlue.copy(alpha = 0.7f),
+                    text = "愛しいシュヘラ",
+                    fontSize = 11.sp,
+                    color = Color(0xFF648DAF),
                     modifier = Modifier.padding(top = 2.dp)
                 )
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Big Live Balance Number
+                // Big Electric Azure Blue Balance Number
                 Text(
                     text = "₹ ${indianNumber(liveBalance)}",
                     fontSize = 36.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = KakashiElectricCyan,
+                    color = KakashiBalanceBlue,
                     modifier = Modifier.fillMaxWidth(0.50f)
                 )
 
@@ -123,7 +123,7 @@ fun KakashiMainBalanceCard(
                     text = formulaText,
                     fontSize = 10.sp,
                     fontFamily = FontFamily.Monospace,
-                    color = KakashiIceBlue.copy(alpha = 0.65f),
+                    color = Color(0xFF7E97B5),
                     maxLines = 2,
                     modifier = Modifier
                         .fillMaxWidth(0.50f)
@@ -134,35 +134,35 @@ fun KakashiMainBalanceCard(
                 ThemedDivider()
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Bottom Income & Expenses Row — Rendered in front of Kakashi's flak jacket!
+                // Bottom Income & Expenses Row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // Total Income Tile
+                    // Total Income Tile (Midnight dark navy surface with electric blue border)
                     Row(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(16.dp))
-                            .background(Color(0xFF091A2E)) // Solid midnight navy
-                            .border(1.dp, Color(0x6600D2FF), RoundedCornerShape(16.dp))
+                            .background(Color(0xFF041221))
+                            .border(1.dp, Color(0xFF0284C7), RoundedCornerShape(16.dp))
                             .padding(10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(32.dp)
+                                .size(34.dp)
                                 .clip(CircleShape)
-                                .background(KakashiElectricCyan.copy(alpha = 0.2f))
-                                .border(1.dp, KakashiElectricCyan.copy(alpha = 0.5f), CircleShape),
+                                .background(Color(0xFF032644))
+                                .border(1.dp, KakashiIncomeBlue, CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.ArrowUpward,
                                 contentDescription = "Income",
-                                tint = KakashiElectricCyan,
-                                modifier = Modifier.size(16.dp)
+                                tint = KakashiIncomeBlue,
+                                modifier = Modifier.size(17.dp)
                             )
                         }
                         Column {
@@ -170,64 +170,25 @@ fun KakashiMainBalanceCard(
                                 text = "TOTAL INCOME",
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = KakashiIceBlue.copy(alpha = 0.7f)
+                                color = Color(0xFF88A2C0)
                             )
                             Text(
                                 text = "+₹${indianNumber(totalIncome)}",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = KakashiElectricCyan
+                                color = KakashiIncomeBlue
                             )
                         }
                     }
 
-                    // Total Expenses Tile: Sits cleanly ON TOP of Kakashi's body
-                    Row(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Color(0xFF190911)) // Solid dark crimson so his jacket flows cleanly behind
-                            .border(1.dp, Color(0x80FF3366), RoundedCornerShape(16.dp))
-                            .padding(10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(KakashiSharinganRed.copy(alpha = 0.2f))
-                                .border(1.dp, KakashiSharinganRed.copy(alpha = 0.5f), CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ArrowDownward,
-                                contentDescription = "Expense",
-                                tint = KakashiSharinganRed,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                        Column {
-                            Text(
-                                text = "TOTAL EXPENSES",
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = KakashiSharinganRed.copy(alpha = 0.7f)
-                            )
-                            Text(
-                                text = "-₹${indianNumber(totalExpenses)}",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = KakashiSharinganRed
-                            )
-                        }
-                    }
+                    // Total Expenses Placeholder spacer so right half has equal column width
+                    Spacer(modifier = Modifier.weight(1f))
                 }
             }
         }
 
-        // 2. KAKASHI ARTWORK: Positioned so his silver hair flows slightly OUTSIDE the card
-        // It is NOT cropped by the card's rounded corners or border!
+        // 2. KAKASHI ARTWORK: Spiky silver hair flows slightly OUTSIDE the card box!
+        // Not cropped by corner radius or border.
         Image(
             painter = painterResource(id = R.drawable.kakashi_corner),
             contentDescription = "Kakashi Hatake",
@@ -245,18 +206,16 @@ fun KakashiMainBalanceCard(
                             maxHeight = targetHeight
                         )
                     )
-                    // layout(0, 0) reports 0 height to parent Box -> NO extra bottom gap!
                     layout(0, 0) {
                         placeable.placeRelative(
-                            // Slightly shifted right (+12dp) and upward (-108dp) so his hair extends out of the box!
-                            x = -targetWidth + 12.dp.roundToPx(),
-                            y = (-108).dp.roundToPx()
+                            x = -targetWidth + 14.dp.roundToPx(),
+                            y = (-110).dp.roundToPx() // Spiky hair naturally extends up past top edge
                         )
                     }
                 }
         )
 
-        // 3. Re-render the Total Expenses tile right on top of Kakashi so his jacket is 100% BEHIND it
+        // 3. TOTAL EXPENSES TILE: Rendered explicitly ON TOP of Kakashi's flak jacket!
         Box(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
@@ -267,25 +226,25 @@ fun KakashiMainBalanceCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFF190911)) // Solid dark crimson surface
-                    .border(1.dp, Color(0x80FF3366), RoundedCornerShape(16.dp))
+                    .background(Color(0xFF1A050A)) // Solid dark Sharingan Crimson surface
+                    .border(1.dp, Color(0xFFE11D48), RoundedCornerShape(16.dp))
                     .padding(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
+                        .size(34.dp)
                         .clip(CircleShape)
-                        .background(KakashiSharinganRed.copy(alpha = 0.2f))
-                        .border(1.dp, KakashiSharinganRed.copy(alpha = 0.5f), CircleShape),
+                        .background(Color(0xFF330913))
+                        .border(1.dp, KakashiSharinganRed, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.ArrowDownward,
                         contentDescription = "Expense",
                         tint = KakashiSharinganRed,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(17.dp)
                     )
                 }
                 Column {
@@ -293,7 +252,7 @@ fun KakashiMainBalanceCard(
                         text = "TOTAL EXPENSES",
                         fontSize = 9.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = KakashiSharinganRed.copy(alpha = 0.7f)
+                        color = Color(0xFFE08B9B)
                     )
                     Text(
                         text = "-₹${indianNumber(totalExpenses)}",
