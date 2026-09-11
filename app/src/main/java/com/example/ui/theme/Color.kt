@@ -24,37 +24,38 @@ val LocalAppTheme = compositionLocalOf { AppTheme.KAKASHI }
 // ------------------------------------------------------------------
 // Hinata Dedicated Standalone Palette
 // ------------------------------------------------------------------
-val HinataBackground = Color(0xFF040008L)       // Deep Obsidian Canvas
-val HinataSurface = Color(0xFF0B0216L)          // Dark Violet Card Surface
-val HinataCardBorder = Color(0x66A855F7L)       // Purple Neon Glow Border
-val HinataCardGlow = Color(0x40A855F7L)         // Outer Shadow Glow
+val HinataBackground = Color(0xFF040008L)
+val HinataSurface = Color(0xFF0B0216L)
+val HinataCardBorder = Color(0x66A855F7L)
+val HinataCardGlow = Color(0x40A855F7L)
 
-// Strict Number Accents for Hinata Theme
-val NeonMintGreen = Color(0xFF00FFB2L)          // Live Balance Mint Neon Green
-val EmeraldIncome = Color(0xFF00FFB2L)          // Income number
-val RoseDeficit = Color(0xFFFB7185L)            // Soft Sakura Rose for Expense & Liability numbers
-val HinataGold = Color(0xFFFACC15L)             // Fixed initial gold number
+val NeonMintGreen = Color(0xFF00FFB2L)
+val EmeraldIncome = Color(0xFF00FFB2L)
+val RoseDeficit = Color(0xFFFB7185L)
+val HinataGold = Color(0xFFFACC15L)
 
-val HinataPurpleLight = Color(0xFFF3E8FFL)      // Crisp lavender text
-val HinataPurpleMuted = Color(0xFFC084FCL)      // Muted lavender for titles/subtitles
-val HinataSakuraPink = Color(0xFFF472B6L)       // Sakura Petal Pink
-val HinataPillBg = Color(0x803B0764L)           // Pill / Tab / Badge Background
-val HinataPillBorder = Color(0x80A855F7L)       // Pill / Tab / Badge Border
-val HinataButtonBg = Color(0xFF2E1065L)         // Violet Button Container
+val HinataPurpleLight = Color(0xFFF3E8FFL)
+val HinataPurpleMuted = Color(0xFFC084FCL)
+val HinataSakuraPink = Color(0xFFF472B6L)
+val HinataPillBg = Color(0x803B0764L)
+val HinataPillBorder = Color(0x80A855F7L)
+val HinataButtonBg = Color(0xFF2E1065L)
 
 // ------------------------------------------------------------------
-// Kakashi (Chidori Lightning & Sharingan) Palette
+// Kakashi (True Pitch Black & Electric Chidori Blue) Palette
 // ------------------------------------------------------------------
-val KakashiBackground = Color(0xFF020612L)      // Deep Midnight Storm Canvas
-val KakashiSurface = Color(0xFF07101EL)         // Dark Lightning-Slate Card Surface
-val KakashiCardBorder = Color(0x8000D2FFL)      // Electric Chidori Cyan Border
-val KakashiCardGlow = Color(0x5500D2FFL)        // Electric Cyan Aura Glow
-val KakashiElectricCyan = Color(0xFF00D2FFL)    // Main Live Balance & Chidori Lightning
-val KakashiIceBlue = Color(0xFF38BDF8L)         // Fixed Initial & Income Accents
-val KakashiSharinganRed = Color(0xFFFF3366L)    // Expense & Liability Sharingan Crimson
-val KakashiPillBg = Color(0x66082F49L)          // Deep Navy Badge Container
-val KakashiPillBorder = Color(0x9900D2FFL)      // Electric Cyan Pill Border
-val KakashiButtonBg = Color(0xFF0C243FL)        // Deep Navy-Cyan Action Button
+val KakashiBackground = Color(0xFF010307L)       // Pitch Black Canvas
+val KakashiSurface = Color(0xFF030A14L)          // Deep Obsidian Midnight Card Surface
+val KakashiCardBorder = Color(0xFF0284C7L)       // Razor-sharp Electric Chidori Border
+val KakashiCardGlow = Color(0x660284C7L)         // High-contrast Chidori Outer Glow
+val KakashiElectricCyan = Color(0xFF14B8A6L)     // Balance Accent
+val KakashiBalanceBlue = Color(0xFF18C0F5L)      // Glowing ₹ 684.95 Electric Blue from reference!
+val KakashiIncomeBlue = Color(0xFF20D0E8L)       // +₹300.00 Electric Blue
+val KakashiSharinganRed = Color(0xFFFF334BL)     // -₹10.00 and ₹665.00 Sharingan Crimson
+val KakashiFixedBlue = Color(0xFF29B6F6L)        // ₹394.95 Fixed Initial Blue
+val KakashiPillBg = Color(0xFF051829L)           // Dark Navy Pill Background
+val KakashiPillBorder = Color(0xFF0EA5E9L)       // Sharp Cyan Pill Border
+val KakashiButtonBg = Color(0xFF04192DL)         // Dark Action Button
 
 // ------------------------------------------------------------------
 // Background / Surface colors — theme-reactive
@@ -62,14 +63,14 @@ val KakashiButtonBg = Color(0xFF0C243FL)        // Deep Navy-Cyan Action Button
 val CanvasBackground: Color
     @Composable get() = when (LocalAppTheme.current) {
         AppTheme.KAKASHI -> KakashiBackground
-        AppTheme.HINATA -> Color(0xFF040008L)
-        AppTheme.BASIC -> Color(0xFF0B0F19L)    // Calm, eye-safe deep slate
+        AppTheme.HINATA -> HinataBackground
+        AppTheme.BASIC -> Color(0xFF0B0F19L)
         else -> Color(0xFF050505L)
     }
 
 val SurfaceDark: Color
     @Composable get() = when (LocalAppTheme.current) {
-        AppTheme.KAKASHI -> Color(0xFF050B17L)
+        AppTheme.KAKASHI -> Color(0xFF02070EL)
         AppTheme.HINATA -> Color(0xFF080112L)
         AppTheme.BASIC -> Color(0xFF131C2EL)
         else -> Color(0xFF0A0A0DL)
@@ -78,15 +79,15 @@ val SurfaceDark: Color
 val SurfaceCard: Color
     @Composable get() = when (LocalAppTheme.current) {
         AppTheme.KAKASHI -> KakashiSurface
-        AppTheme.HINATA -> Color(0xFF0B0216L)
+        AppTheme.HINATA -> HinataSurface
         AppTheme.BASIC -> Color(0xFF1E293BL)
-        else -> Color(0xFF071710L)              // Glowing neon green glass tint for Default
+        else -> Color(0xFF071710L)
     }
 
 val CardGlass: Color
     @Composable get() = when (LocalAppTheme.current) {
         AppTheme.KAKASHI -> KakashiSurface
-        AppTheme.HINATA -> Color(0xFF0B0216L)
+        AppTheme.HINATA -> HinataSurface
         AppTheme.BASIC -> Color(0xFF1E293BL)
         else -> Color(0xFF06160FL)
     }
@@ -94,7 +95,7 @@ val CardGlass: Color
 val CardGlassBorder: Color
     @Composable get() = when (LocalAppTheme.current) {
         AppTheme.KAKASHI -> KakashiCardBorder
-        AppTheme.HINATA -> Color(0x66A855F7L)
+        AppTheme.HINATA -> HinataCardBorder
         AppTheme.BASIC -> Color(0xFF334155L)
         else -> Color(0x4000FF9CL)
     }
@@ -104,7 +105,7 @@ val CardGlassBorder: Color
 // ------------------------------------------------------------------
 val NeonGreen: Color
     @Composable get() = when (LocalAppTheme.current) {
-        AppTheme.KAKASHI -> KakashiElectricCyan // Electric blue live balance & income
+        AppTheme.KAKASHI -> KakashiIncomeBlue    // Electric blue from reference screenshot
         AppTheme.HINATA -> Color(0xFF00FFB2L)
         AppTheme.BASIC -> Color(0xFF38BDF8L)
         else -> Color(0xFF00FF9CL)
@@ -120,7 +121,7 @@ val NeonGreenGlow: Color
 
 val NeonGreenDark: Color
     @Composable get() = when (LocalAppTheme.current) {
-        AppTheme.KAKASHI -> Color(0xFF0284C7L)
+        AppTheme.KAKASHI -> Color(0xFF0369A1L)
         AppTheme.HINATA -> Color(0xFF008F64L)
         AppTheme.BASIC -> Color(0xFF0284C7L)
         else -> Color(0xFF00995EL)
@@ -136,7 +137,7 @@ val NeonRed: Color
 
 val NeonRedGlow: Color
     @Composable get() = when (LocalAppTheme.current) {
-        AppTheme.KAKASHI -> Color(0x55FF3366L)
+        AppTheme.KAKASHI -> Color(0x66FF334BL)
         AppTheme.HINATA -> Color(0x40A855F7L)
         AppTheme.BASIC -> Color.Transparent
         else -> Color(0x66FF3366L)
@@ -152,7 +153,7 @@ val NeonRedDark: Color
 
 val NeonYellow: Color
     @Composable get() = when (LocalAppTheme.current) {
-        AppTheme.KAKASHI -> KakashiIceBlue      // Electric Ice Blue for Fixed Initial
+        AppTheme.KAKASHI -> KakashiFixedBlue     // Electric Ice Blue for Fixed Initial
         AppTheme.HINATA -> Color(0xFFFACC15L)
         AppTheme.BASIC -> Color(0xFFFDE047L)
         else -> Color(0xFFFFD600L)
@@ -168,7 +169,7 @@ val NeonYellowGlow: Color
 
 val NeonYellowDark: Color
     @Composable get() = when (LocalAppTheme.current) {
-        AppTheme.KAKASHI -> Color(0xFF0369A1L)
+        AppTheme.KAKASHI -> Color(0xFF0284C7L)
         AppTheme.HINATA -> Color(0xFF854D0EL)
         AppTheme.BASIC -> Color(0xFFCA8A04L)
         else -> Color(0xFF8F7800L)
@@ -176,7 +177,7 @@ val NeonYellowDark: Color
 
 val NeonCyan: Color
     @Composable get() = when (LocalAppTheme.current) {
-        AppTheme.KAKASHI -> KakashiElectricCyan
+        AppTheme.KAKASHI -> KakashiBalanceBlue
         AppTheme.HINATA -> Color(0xFFC084FCL)
         AppTheme.BASIC -> Color(0xFF94A3B8L)
         else -> Color(0xFF00E5FFL)
@@ -192,7 +193,7 @@ val NeonCyanGlow: Color
 
 val NeonPurple: Color
     @Composable get() = when (LocalAppTheme.current) {
-        AppTheme.KAKASHI -> KakashiElectricCyan
+        AppTheme.KAKASHI -> KakashiBalanceBlue
         AppTheme.HINATA -> Color(0xFFA855F7L)
         AppTheme.BASIC -> Color(0xFFCBD5E1L)
         else -> Color(0xFFA855F7L)
@@ -211,7 +212,7 @@ val NeonPurpleGlow: Color
 // ------------------------------------------------------------------
 val TextPrimary: Color
     @Composable get() = when (LocalAppTheme.current) {
-        AppTheme.KAKASHI -> Color(0xFFF0F9FFL)  // Crisp ice-white
+        AppTheme.KAKASHI -> Color(0xFFFFFFFFL)   // Pure high-contrast White
         AppTheme.HINATA -> Color(0xFFF3E8FFL)
         AppTheme.BASIC -> Color(0xFFF8FAFCL)
         else -> Color(0xFFFFFFFFL)
@@ -219,7 +220,7 @@ val TextPrimary: Color
 
 val TextSecondary: Color
     @Composable get() = when (LocalAppTheme.current) {
-        AppTheme.KAKASHI -> Color(0xFFBAE6FDL)  // Soft sky-tinted white
+        AppTheme.KAKASHI -> Color(0xFF8FA3BFL)   // Refined steel-slate gray from reference
         AppTheme.HINATA -> Color(0xFFD8B4FEL)
         AppTheme.BASIC -> Color(0xFFCBD5E1L)
         else -> Color(0xFFA1A1AAL)
@@ -227,7 +228,7 @@ val TextSecondary: Color
 
 val TextMuted: Color
     @Composable get() = when (LocalAppTheme.current) {
-        AppTheme.KAKASHI -> Color(0xFF0284C7L)  // Muted lightning cyan
+        AppTheme.KAKASHI -> Color(0xFF536780L)   // Dark muted steel
         AppTheme.HINATA -> Color(0xFFA855F7L)
         AppTheme.BASIC -> Color(0xFF94A3B8L)
         else -> Color(0xFF71717AL)
