@@ -22,7 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -41,7 +40,6 @@ import com.example.ui.components.*
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.FinanceUiState
 import com.example.ui.viewmodel.FinanceViewModel
-import com.example.util.FileExportUtil
 import com.example.util.indianNumber
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import kotlinx.coroutines.flow.collectLatest
@@ -59,18 +57,12 @@ fun DashboardScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
 
     var showAdminUnlockDialog by remember { mutableStateOf(false) }
     var showEditInitialBalanceDialog by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
     var editingTransaction by remember { mutableStateOf<TransactionEntity?>(null) }
     var editingLiability by remember { mutableStateOf<LiabilityEntity?>(null) }
-
-    // Dialog states for Exports and Security
-    var showDateRangeExportDialog by remember { mutableStateOf(false) }
-    var showKeywordExportDialog by remember { mutableStateOf(false) }
-    var showChangePinDialog by remember { mutableStateOf(false) }
 
     val googleSignInLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -117,7 +109,7 @@ fun DashboardScreen(
                 contentPadding = WindowInsets.systemBars.asPaddingValues(),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // App Header with "MADE BY RUH, WITH LOVE ❤"
+                // Header with "MADE BY RUH, WITH LOVE ❤"
                 item {
                     AppHeader(
                         isAdminMode = isAdminMode,
@@ -129,7 +121,7 @@ fun DashboardScreen(
                     )
                 }
 
-                // Main Live Balance Card with Ruh, Kakashi, Bumblebee, Hinata, or Classic
+                // Main Balance Cards
                 item {
                     val formulaText = "Formula: Initial (${uiState.currencySymbol}${uiState.initialBalance.toInt()}) + Income (${uiState.currencySymbol}${uiState.totalIncome.toInt()}) - Expenses (${uiState.currencySymbol}${uiState.totalExpense.toInt()})"
 
@@ -158,16 +150,7 @@ fun DashboardScreen(
                                 formulaText = formulaText
                             )
                         }
-                        AppTheme.HINATA -> {
-                            HinataMainBalanceCard(
-                                liveBalance = uiState.liveBalance,
-                                totalIncome = uiState.totalIncome,
-                                totalExpenses = uiState.totalExpense,
-                                formulaText = formulaText
-                            )
-                        }
                         else -> {
-                            // Classic Neon or Basic
                             HinataMainBalanceCard(
                                 liveBalance = uiState.liveBalance,
                                 totalIncome = uiState.totalIncome,
@@ -178,7 +161,7 @@ fun DashboardScreen(
                     }
                 }
 
-                // Split Balance Row (Fixed Initial & Liabilities)
+                // Split Balance Row
                 item {
                     SplitBalanceRow(
                         uiState = uiState,
@@ -201,11 +184,11 @@ fun DashboardScreen(
                     }
                 }
 
-                // Transaction Entry Module
+                // Transactions Module
                 item {
                     NormalTransactionModule(
                         currencySymbol = uiState.currencySymbol,
-                        onRecordTransaction = { amount, type, desc, pin, onDone ->
+                        onRecordTransaction = { amount: Double, type: String, desc: String, pin: String, onDone: () -> Unit ->
                             viewModel.addTransaction(amount, type, desc, pin, onDone)
                         }
                     )
@@ -216,14 +199,14 @@ fun DashboardScreen(
                     item {
                         LiabilityManagementModule(
                             currencySymbol = uiState.currencySymbol,
-                            onRecordLiability = { amount, actionType, desc, pin, onDone ->
+                            onRecordLiability = { amount: Double, actionType: String, desc: String, pin: String, onDone: () -> Unit ->
                                 viewModel.addLiability(amount, actionType, desc, pin, onDone)
                             }
                         )
                     }
                 }
 
-                // Permanent Audit Ledgers
+                // Audit Ledgers
                 item {
                     AuditLedgersSection(
                         transactions = transactions,
@@ -231,17 +214,16 @@ fun DashboardScreen(
                         currencySymbol = uiState.currencySymbol,
                         isAdminMode = isAdminMode,
                         showLiabilities = uiState.showLiabilities,
-                        onEditTx = { tx -> editingTransaction = tx },
-                        onDeleteTx = { tx -> viewModel.deleteTransactionWithAdmin(tx) },
-                        onEditLiability = { l -> editingLiability = l },
-                        onDeleteLiability = { l -> viewModel.deleteLiabilityWithAdmin(l) }
+                        onEditTx = { tx: TransactionEntity -> editingTransaction = tx },
+                        onDeleteTx = { tx: TransactionEntity -> viewModel.deleteTransactionWithAdmin(tx) },
+                        onEditLiability = { l: LiabilityEntity -> editingLiability = l },
+                        onDeleteLiability = { l: LiabilityEntity -> viewModel.deleteLiabilityWithAdmin(l) }
                     )
                 }
 
                 item { Spacer(modifier = Modifier.height(32.dp)) }
             }
 
-            // Falling petals for Hinata's theme
             if (isHinata) {
                 FloatingPetalsOverlay(petalColor = NeonCyan, petalCount = 14)
             }
@@ -258,7 +240,7 @@ fun DashboardScreen(
         if (showAdminUnlockDialog) {
             AdminUnlockDialog(
                 onDismiss = { showAdminUnlockDialog = false },
-                onUnlock = { pin ->
+                onUnlock = { pin: String ->
                     if (viewModel.verifyAndUnlockAdminMode(pin)) showAdminUnlockDialog = false
                 },
                 googleAccountLinked = uiState.googleAccountEmail != null,
@@ -271,7 +253,7 @@ fun DashboardScreen(
                 currentBalance = uiState.initialBalance,
                 currencySymbol = uiState.currencySymbol,
                 onDismiss = { showEditInitialBalanceDialog = false },
-                onConfirm = { newBal ->
+                onConfirm = { newBal: Double ->
                     viewModel.updateInitialBalanceWithTier2(newBal) { showEditInitialBalanceDialog = false }
                 }
             )
@@ -281,53 +263,12 @@ fun DashboardScreen(
             SettingsDialog(
                 uiState = uiState,
                 onDismiss = { showSettingsDialog = false },
-                onSelectTheme = { theme -> viewModel.setThemeMode(theme) },
+                onSelectTheme = { theme: String -> viewModel.setThemeMode(theme) },
                 onToggleLiabilities = { viewModel.setShowLiabilities(it) },
                 onSignInGoogle = { googleSignInLauncher.launch(viewModel.driveSyncManager.getSignInIntent()) },
-                onSwitchGoogleAccount = { googleSignInLauncher.launch(viewModel.driveSyncManager.getSignInIntent()) },
-                onDisconnectGoogle = { viewModel.driveSyncManager.signOut { viewModel.refreshGoogleAccount() } },
+                onSwitchAccount = { googleSignInLauncher.launch(viewModel.driveSyncManager.getSignInIntent()) },
                 onBackupNow = { viewModel.performCloudBackup() },
-                onRestoreNow = { viewModel.performCloudRestore() },
-                onOpenDateRangeExport = {
-                    showSettingsDialog = false
-                    showDateRangeExportDialog = true
-                },
-                onOpenKeywordExport = {
-                    showSettingsDialog = false
-                    showKeywordExportDialog = true
-                },
-                onOpenChangePin = {
-                    showSettingsDialog = false
-                    showChangePinDialog = true
-                }
-            )
-        }
-
-        if (showDateRangeExportDialog) {
-            DateRangeExportDialog(
-                onDismiss = { showDateRangeExportDialog = false },
-                onExport = { start, end ->
-                    FileExportUtil.exportTransactionsByDate(context, transactions, start, end)
-                    showDateRangeExportDialog = false
-                }
-            )
-        }
-
-        if (showKeywordExportDialog) {
-            KeywordExportDialog(
-                onDismiss = { showKeywordExportDialog = false },
-                onExport = { keyword ->
-                    FileExportUtil.exportTransactionsByKeyword(context, transactions, keyword)
-                    showKeywordExportDialog = false
-                }
-            )
-        }
-
-        if (showChangePinDialog) {
-            ChangePinDialog(
-                onDismiss = { showChangePinDialog = false },
-                onChangeTier1 = { old, new -> viewModel.changeTier1Pin(old, new) },
-                onChangeTier2 = { old, new -> viewModel.changeTier2Pin(old, new) }
+                onRestoreNow = { viewModel.performCloudRestore() }
             )
         }
 
@@ -355,9 +296,6 @@ fun DashboardScreen(
     }
 }
 
-/**
- * App Header with "MADE BY RUH, WITH LOVE ❤" Subtitle
- */
 @Composable
 fun AppHeader(
     isAdminMode: Boolean,
@@ -512,9 +450,6 @@ fun AppHeader(
     }
 }
 
-/**
- * Full Settings Dialog with All 6 Themes, Account Switching, Exports & Passwords
- */
 @Composable
 fun SettingsDialog(
     uiState: FinanceUiState,
@@ -522,13 +457,9 @@ fun SettingsDialog(
     onSelectTheme: (String) -> Unit,
     onToggleLiabilities: (Boolean) -> Unit,
     onSignInGoogle: () -> Unit,
-    onSwitchGoogleAccount: () -> Unit,
-    onDisconnectGoogle: () -> Unit,
+    onSwitchAccount: () -> Unit,
     onBackupNow: () -> Unit,
-    onRestoreNow: () -> Unit,
-    onOpenDateRangeExport: () -> Unit,
-    onOpenKeywordExport: () -> Unit,
-    onOpenChangePin: () -> Unit
+    onRestoreNow: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -536,7 +467,7 @@ fun SettingsDialog(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(Icons.Default.Settings, contentDescription = null, tint = NeonCyan)
-                Text(text = "Settings & Preferences", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(text = "Settings & Themes", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
         },
         text = {
@@ -546,12 +477,12 @@ fun SettingsDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                // 1. ALL 6 THEMES SELECTION SECTION
+                // THEME SELECTION SECTION
                 GlassBox(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(text = "SELECT APP THEME", color = NeonCyan, fontSize = 11.sp, fontWeight = FontWeight.Bold)
 
-                        // 🩸 RUH THEME
+                        // 🩸 RUH
                         ThemeOptionRow(
                             title = "🩸 Ruh",
                             description = "Pitch black, blood red border, Sharingan & Ꮢᴜʜ᭓Ꮢɪᴅɛʀ",
@@ -559,7 +490,7 @@ fun SettingsDialog(
                             onClick = { onSelectTheme(AppTheme.RUH) }
                         )
 
-                        // 🏎️ BUMBLEBEE THEME
+                        // 🏎️ BUMBLEBEE
                         ThemeOptionRow(
                             title = "🏎️ Bumblebee",
                             description = "Metallic amber car body, flames & pitch black",
@@ -567,7 +498,7 @@ fun SettingsDialog(
                             onClick = { onSelectTheme(AppTheme.BUMBLEBEE) }
                         )
 
-                        // ⚡ KAKASHI THEME
+                        // ⚡ KAKASHI
                         ThemeOptionRow(
                             title = "⚡ Kakashi",
                             description = "Chidori electric blue, Sharingan red & deep obsidian",
@@ -575,7 +506,7 @@ fun SettingsDialog(
                             onClick = { onSelectTheme(AppTheme.KAKASHI) }
                         )
 
-                        // 🪷 HINATA THEME
+                        // 🪷 HINATA
                         ThemeOptionRow(
                             title = "🪷 Hinata",
                             description = "Falling petals, lavender glow & Byakugan mint green",
@@ -583,25 +514,17 @@ fun SettingsDialog(
                             onClick = { onSelectTheme(AppTheme.HINATA) }
                         )
 
-                        // 🌐 NEON CYBERPUNK (DEFAULT)
-                        ThemeOptionRow(
-                            title = "🌐 Neon Cyberpunk",
-                            description = "Electric cyan, neon green, and deep midnight dark",
-                            selected = uiState.themeMode == AppTheme.NEON,
-                            onClick = { onSelectTheme(AppTheme.NEON) }
-                        )
-
                         // 📄 BASIC (LARGE TEXT)
                         ThemeOptionRow(
                             title = "📄 Basic (Large Text)",
-                            description = "High legibility, enlarged fonts, clean classic contrast",
+                            description = "Clean large text high legibility theme",
                             selected = uiState.themeMode == AppTheme.BASIC,
                             onClick = { onSelectTheme(AppTheme.BASIC) }
                         )
                     }
                 }
 
-                // 2. LIABILITIES TOGGLE
+                // LIABILITIES TOGGLE
                 GlassBox(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
                     Row(
                         modifier = Modifier.padding(12.dp).fillMaxWidth(),
@@ -620,23 +543,22 @@ fun SettingsDialog(
                     }
                 }
 
-                // 3. GOOGLE DRIVE BACKUP & ACCOUNT SWITCHING
+                // GOOGLE DRIVE BACKUP & ACCOUNT SWITCHING
                 GlassBox(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(text = "GOOGLE DRIVE CLOUD SYNC", color = NeonCyan, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text(text = "GOOGLE DRIVE BACKUP", color = NeonCyan, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         Text(
-                            text = if (uiState.googleAccountEmail != null) "Linked Account:\n${uiState.googleAccountEmail}" else "Connect your Google account to auto-backup data.",
+                            text = if (uiState.googleAccountEmail != null) "Connected: ${uiState.googleAccountEmail}" else "Link your Google account to auto-backup.",
                             color = TextSecondary,
                             fontSize = 11.sp
                         )
-
                         if (uiState.googleAccountEmail == null) {
                             Button(
                                 onClick = onSignInGoogle,
                                 colors = ButtonDefaults.buttonColors(containerColor = NeonCyan),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text("LINK GOOGLE ACCOUNT", color = CanvasBackground, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Text("LINK ACCOUNT", color = CanvasBackground, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                             }
                         } else {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -656,57 +578,14 @@ fun SettingsDialog(
                                     Text("RESTORE", color = NeonCyan, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                                 }
                             }
-
-                            // Switch / Disconnect buttons
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedButton(onClick = onSwitchGoogleAccount, modifier = Modifier.weight(1f)) {
-                                    Text("SWITCH ACCOUNT", fontSize = 10.sp)
-                                }
-                                OutlinedButton(onClick = onDisconnectGoogle, modifier = Modifier.weight(1f)) {
-                                    Text("DISCONNECT", color = NeonRed, fontSize = 10.sp)
-                                }
+                            OutlinedButton(
+                                onClick = onSwitchAccount,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Default.SwitchAccount, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Switch / Change Google Account", fontSize = 11.sp)
                             }
-                        }
-                    }
-                }
-
-                // 4. DATA EXPORTS (.TXT FILES)
-                GlassBox(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
-                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(text = "EXPORT DATA (.TXT FILE)", color = NeonCyan, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-
-                        OutlinedButton(
-                            onClick = onOpenDateRangeExport,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Export by Date Range", fontSize = 12.sp)
-                        }
-
-                        OutlinedButton(
-                            onClick = onOpenKeywordExport,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Export Categorized by Keyword", fontSize = 12.sp)
-                        }
-                    }
-                }
-
-                // 5. SECURITY & PASSWORDS
-                GlassBox(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
-                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(text = "SECURITY & PASSWORDS", color = NeonCyan, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-
-                        OutlinedButton(
-                            onClick = onOpenChangePin,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Change Tier 1 / Tier 2 PIN", fontSize = 12.sp)
                         }
                     }
                 }
@@ -755,163 +634,6 @@ fun ThemeOptionRow(
     }
 }
 
-/**
- * Export by Date Range Dialog
- */
-@Composable
-fun DateRangeExportDialog(
-    onDismiss: () -> Unit,
-    onExport: (String, String) -> Unit
-) {
-    var startDate by remember { mutableStateOf("") }
-    var endDate by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = SurfaceDark,
-        title = { Text("Export by Date Range", color = NeonCyan, fontWeight = FontWeight.Bold) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Enter dates in DD/MM/YYYY format or leave blank for all.", color = TextSecondary, fontSize = 12.sp)
-                OutlinedTextField(
-                    value = startDate,
-                    onValueChange = { startDate = it },
-                    label = { Text("Start Date (e.g. 01/01/2026)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = endDate,
-                    onValueChange = { endDate = it },
-                    label = { Text("End Date (e.g. 31/12/2026)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = { onExport(startDate.trim(), endDate.trim()) },
-                colors = ButtonDefaults.buttonColors(containerColor = NeonCyan)
-            ) {
-                Text("DOWNLOAD TXT", color = CanvasBackground, fontWeight = FontWeight.Bold)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
-        }
-    )
-}
-
-/**
- * Export by Keyword Dialog
- */
-@Composable
-fun KeywordExportDialog(
-    onDismiss: () -> Unit,
-    onExport: (String) -> Unit
-) {
-    var keyword by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = SurfaceDark,
-        title = { Text("Export by Keyword / Category", color = NeonCyan, fontWeight = FontWeight.Bold) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Filters all transactions matching this keyword and calculates subtotals.", color = TextSecondary, fontSize = 12.sp)
-                OutlinedTextField(
-                    value = keyword,
-                    onValueChange = { keyword = it },
-                    label = { Text("Keyword (e.g. Salary, Rent, Food)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = { onExport(keyword.trim()) },
-                colors = ButtonDefaults.buttonColors(containerColor = NeonCyan)
-            ) {
-                Text("DOWNLOAD TXT", color = CanvasBackground, fontWeight = FontWeight.Bold)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
-        }
-    )
-}
-
-/**
- * Change PIN Dialog
- */
-@Composable
-fun ChangePinDialog(
-    onDismiss: () -> Unit,
-    onChangeTier1: (String, String) -> Unit,
-    onChangeTier2: (String, String) -> Unit
-) {
-    var tabIndex by remember { mutableIntStateOf(0) }
-    var currentPin by remember { mutableStateOf("") }
-    var newPin by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = SurfaceDark,
-        title = { Text("Change Security Passwords", color = NeonCyan, fontWeight = FontWeight.Bold) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                TabRow(selectedTabIndex = tabIndex, containerColor = SurfaceDark) {
-                    Tab(selected = tabIndex == 0, onClick = { tabIndex = 0; currentPin = ""; newPin = "" }) {
-                        Text("Tier 1 PIN", color = if (tabIndex == 0) NeonCyan else TextMuted, modifier = Modifier.padding(8.dp))
-                    }
-                    Tab(selected = tabIndex == 1, onClick = { tabIndex = 1; currentPin = ""; newPin = "" }) {
-                        Text("Tier 2 Password", color = if (tabIndex == 1) NeonRed else TextMuted, modifier = Modifier.padding(8.dp))
-                    }
-                }
-
-                OutlinedTextField(
-                    value = currentPin,
-                    onValueChange = { currentPin = it },
-                    label = { Text("Current ${if (tabIndex == 0) "Tier 1 PIN" else "Tier 2 Password"}") },
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = newPin,
-                    onValueChange = { newPin = it },
-                    label = { Text("New ${if (tabIndex == 0) "Tier 1 PIN" else "Tier 2 Password"}") },
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (tabIndex == 0) onChangeTier1(currentPin, newPin) else onChangeTier2(currentPin, newPin)
-                    onDismiss()
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = if (tabIndex == 0) NeonCyan else NeonRed)
-            ) {
-                Text("UPDATE", color = CanvasBackground, fontWeight = FontWeight.Bold)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
-        }
-    )
-}
-
-/**
- * Edit Transaction Dialog for Admin Mode
- */
 @Composable
 fun EditTransactionDialog(
     transaction: TransactionEntity,
@@ -925,9 +647,7 @@ fun EditTransactionDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = SurfaceDark,
-        title = {
-            Text(text = "Edit Transaction (Admin)", color = NeonCyan, fontWeight = FontWeight.Bold)
-        },
+        title = { Text(text = "Edit Transaction (Admin)", color = NeonCyan, fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(
@@ -964,9 +684,6 @@ fun EditTransactionDialog(
     )
 }
 
-/**
- * Edit Liability Dialog for Admin Mode
- */
 @Composable
 fun EditLiabilityDialog(
     liability: LiabilityEntity,
@@ -980,9 +697,7 @@ fun EditLiabilityDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = SurfaceDark,
-        title = {
-            Text(text = "Edit Liability (Admin)", color = NeonRed, fontWeight = FontWeight.Bold)
-        },
+        title = { Text(text = "Edit Liability (Admin)", color = NeonRed, fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(
@@ -1860,9 +1575,7 @@ fun AdminUnlockDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = SurfaceDark,
-        title = {
-            Text(text = "Tier 2 Master Access", color = TextPrimary, fontWeight = FontWeight.Bold)
-        },
+        title = { Text(text = "Tier 2 Master Access", color = TextPrimary, fontWeight = FontWeight.Bold) },
         text = {
             Column {
                 Text("Enter Master Password (Default: 9999) to unlock Admin Mode.", color = TextSecondary, fontSize = 13.sp)
@@ -1904,9 +1617,7 @@ fun EditInitialBalanceDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = SurfaceDark,
-        title = {
-            Text(text = "Edit Fixed Starting Balance", color = NeonYellow, fontWeight = FontWeight.Bold)
-        },
+        title = { Text(text = "Edit Fixed Starting Balance", color = NeonYellow, fontWeight = FontWeight.Bold) },
         text = {
             Column {
                 Text("Changes apply to Main Live Balance immediately.", color = TextSecondary, fontSize = 13.sp)
