@@ -72,7 +72,6 @@ fun DashboardScreen(
     var editingTransaction by remember { mutableStateOf<TransactionEntity?>(null) }
     var editingLiability by remember { mutableStateOf<LiabilityEntity?>(null) }
 
-    // Dialog states for Exports, Passwords & Account Switch Confirmation
     var showDateRangeExportDialog by remember { mutableStateOf(false) }
     var showKeywordExportDialog by remember { mutableStateOf(false) }
     var showChangePinDialog by remember { mutableStateOf(false) }
@@ -148,7 +147,7 @@ fun DashboardScreen(
                     )
                 }
 
-                // Main Live Balance Card
+                // Main Live Balance Card with Ruh, Bumblebee, Kakashi, Hinata, or Classic Neon
                 item {
                     val formulaText = "Formula: Initial (${uiState.currencySymbol}${uiState.initialBalance.toInt()}) + Income (${uiState.currencySymbol}${uiState.totalIncome.toInt()}) - Expenses (${uiState.currencySymbol}${uiState.totalExpense.toInt()})"
 
@@ -186,7 +185,6 @@ fun DashboardScreen(
                             )
                         }
                         else -> {
-                            // "DEFAULT" (Original Neon Cyberpunk) or "BASIC"
                             HinataMainBalanceCard(
                                 liveBalance = uiState.liveBalance,
                                 totalIncome = uiState.totalIncome,
@@ -311,6 +309,7 @@ fun DashboardScreen(
         if (showSettingsDialog) {
             SettingsDialog(
                 uiState = uiState,
+                isAdminMode = isAdminMode,
                 onDismiss = { showSettingsDialog = false },
                 onSelectTheme = { theme: String -> viewModel.setThemeMode(theme) },
                 onToggleLiabilities = { viewModel.setShowLiabilities(it) },
@@ -332,6 +331,10 @@ fun DashboardScreen(
                 onOpenChangePin = {
                     showSettingsDialog = false
                     showChangePinDialog = true
+                },
+                onRequestAdminUnlock = {
+                    showSettingsDialog = false
+                    showAdminUnlockDialog = true
                 }
             )
         }
@@ -394,11 +397,13 @@ fun DashboardScreen(
             )
         }
 
-        // 9. Change Passwords Dialog (Tier 1 & Tier 2)
+        // 9. Change Passwords Dialog (Protected with Master Password Verification)
         if (showChangePinDialog) {
             ChangePasswordsDialog(
                 currentTier1 = uiState.tier1Password,
                 currentTier2 = uiState.tier2Password,
+                isAdminMode = isAdminMode,
+                onVerifyAdmin = { pin -> viewModel.verifyAndUnlockAdminMode(pin) },
                 onDismiss = { showChangePinDialog = false },
                 onConfirm = { newT1, newT2 ->
                     viewModel.updatePasswords(newT1, newT2) {
@@ -587,11 +592,12 @@ fun AppHeader(
 }
 
 /**
- * Settings Dialog with All Themes, Exports, Password Management & Cloud Sync
+ * Settings Dialog with Theme Options, Exports, Protected Passwords & Cloud Sync
  */
 @Composable
 fun SettingsDialog(
     uiState: FinanceUiState,
+    isAdminMode: Boolean,
     onDismiss: () -> Unit,
     onSelectTheme: (String) -> Unit,
     onToggleLiabilities: (Boolean) -> Unit,
@@ -601,7 +607,8 @@ fun SettingsDialog(
     onRestoreNow: () -> Unit,
     onOpenDateRangeExport: () -> Unit,
     onOpenKeywordExport: () -> Unit,
-    onOpenChangePin: () -> Unit
+    onOpenChangePin: () -> Unit,
+    onRequestAdminUnlock: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -767,18 +774,53 @@ fun SettingsDialog(
                     }
                 }
 
-                // 5. SECURITY & PASSWORDS
+                // 5. SECURITY & PASSWORDS (Protected with Tier 2 Master Password verification)
                 GlassBox(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(text = "SECURITY PASSWORDS", color = NeonCyan, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(text = "SECURITY PASSWORDS", color = NeonCyan, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            if (isAdminMode) {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = NeonRed.copy(alpha = 0.2f)
+                                ) {
+                                    Text(
+                                        text = "ADMIN UNLOCKED",
+                                        color = NeonRed,
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                        }
 
                         OutlinedButton(
-                            onClick = onOpenChangePin,
+                            onClick = {
+                                if (isAdminMode) {
+                                    onOpenChangePin()
+                                } else {
+                                    onRequestAdminUnlock()
+                                }
+                            },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Icon(
+                                imageVector = if (isAdminMode) Icons.Default.LockOpen else Icons.Default.Lock,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = if (isAdminMode) NeonRed else TextSecondary
+                            )
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Change Tier 1 / Tier 2 Passwords", fontSize = 11.sp)
+                            Text(
+                                text = if (isAdminMode) "Change Tier 1 / Tier 2 Passwords" else "Unlock Master Password to Change",
+                                fontSize = 11.sp,
+                                color = if (isAdminMode) NeonRed else TextPrimary
+                            )
                         }
                     }
                 }
@@ -828,9 +870,7 @@ fun ThemeOptionRow(
 }
 
 /**
- * Explicit Account Switch Warning Dialog
- * Alerts user that local storage will be cleared and reset to 0, backed up first,
- * and allows switching to another Google Account to restore its backup.
+ * Account Switch Warning Dialog
  */
 @Composable
 fun SwitchAccountWarningDialog(
@@ -857,7 +897,7 @@ fun SwitchAccountWarningDialog(
                 )
                 Text(
                     text = "1. Your current data will be safely backed up to Google Drive first.\n\n" +
-                            "2. Local storage will be reset to ₹0 (cleared) so your device starts on a clean slate.\n\n" +
+                            "2. Local storage balance will be reset to ₹0 (cleared) so your device starts on a clean slate.\n\n" +
                             "3. You will choose your new Google Account, and then you can restore that account's cloud backup.",
                     color = TextSecondary,
                     fontSize = 12.sp,
@@ -1044,48 +1084,113 @@ fun KeywordExportDialog(
 }
 
 /**
- * Change Passwords Dialog (Tier 1 & Tier 2)
+ * Change Passwords Dialog with mandatory Tier 2 Master Password authentication
  */
 @Composable
 fun ChangePasswordsDialog(
     currentTier1: String,
     currentTier2: String,
+    isAdminMode: Boolean,
+    onVerifyAdmin: (String) -> Boolean,
     onDismiss: () -> Unit,
     onConfirm: (newTier1: String, newTier2: String) -> Unit
 ) {
+    var masterVerifyText by remember { mutableStateOf("") }
+    var isVerified by remember { mutableStateOf(isAdminMode) }
+    var errorMsg by remember { mutableStateOf<String?>(null) }
+
     var tier1Text by remember { mutableStateOf(currentTier1) }
     var tier2Text by remember { mutableStateOf(currentTier2) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = SurfaceDark,
-        title = { Text("Change Security Passwords", color = NeonCyan, fontWeight = FontWeight.Bold) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(
-                    value = tier1Text,
-                    onValueChange = { tier1Text = it },
-                    label = { Text("Tier 1 Transaction PIN") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = tier2Text,
-                    onValueChange = { tier2Text = it },
-                    label = { Text("Tier 2 Master Password") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Default.Security, contentDescription = null, tint = if (isVerified) NeonGreen else NeonRed)
+                Text(
+                    text = if (isVerified) "Update Security Passwords" else "Enter Master Password",
+                    color = TextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
                 )
             }
         },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (!isVerified) {
+                    Text(
+                        text = "You must verify your Tier 2 Master Password before you can change any PINs or passwords.",
+                        color = TextSecondary,
+                        fontSize = 12.sp
+                    )
+
+                    OutlinedTextField(
+                        value = masterVerifyText,
+                        onValueChange = {
+                            masterVerifyText = it
+                            errorMsg = null
+                        },
+                        label = { Text("Current Master Password") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        isError = errorMsg != null,
+                        supportingText = errorMsg?.let { { Text(it, color = NeonRed, fontSize = 10.sp) } },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else {
+                    Text(
+                        text = "Tier 2 Master access verified. Enter your new security credentials below:",
+                        color = NeonGreen,
+                        fontSize = 11.sp
+                    )
+
+                    OutlinedTextField(
+                        value = tier1Text,
+                        onValueChange = { tier1Text = it },
+                        label = { Text("New Tier 1 PIN (for recording entries)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = tier2Text,
+                        onValueChange = { tier2Text = it },
+                        label = { Text("New Tier 2 Master Password") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        },
         confirmButton = {
-            Button(
-                onClick = { onConfirm(tier1Text.trim(), tier2Text.trim()) },
-                colors = ButtonDefaults.buttonColors(containerColor = NeonCyan)
-            ) {
-                Text("SAVE PASSWORDS", color = CanvasBackground, fontWeight = FontWeight.Bold)
+            if (!isVerified) {
+                Button(
+                    onClick = {
+                        if (onVerifyAdmin(masterVerifyText)) {
+                            isVerified = true
+                        } else {
+                            errorMsg = "Incorrect Master Password"
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = NeonRed)
+                ) {
+                    Text("VERIFY", color = CanvasBackground, fontWeight = FontWeight.Bold)
+                }
+            } else {
+                Button(
+                    onClick = {
+                        if (tier1Text.isNotBlank() && tier2Text.isNotBlank()) {
+                            onConfirm(tier1Text.trim(), tier2Text.trim())
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = NeonGreen)
+                ) {
+                    Text("SAVE PASSWORDS", color = CanvasBackground, fontWeight = FontWeight.Bold)
+                }
             }
         },
         dismissButton = {
