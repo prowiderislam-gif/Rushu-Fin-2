@@ -1,8 +1,6 @@
 package com.example.ui.screens
 
 import android.app.Activity
-import android.content.Intent
-import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -26,13 +24,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -45,14 +41,10 @@ import com.example.ui.components.*
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.FinanceUiState
 import com.example.ui.viewmodel.FinanceViewModel
-import com.example.util.FileExportUtil
 import com.example.util.indianNumber
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @Composable
 fun DashboardScreen(
@@ -66,7 +58,6 @@ fun DashboardScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
 
     var showAdminUnlockDialog by remember { mutableStateOf(false) }
     var showEditInitialBalanceDialog by remember { mutableStateOf(false) }
@@ -282,28 +273,138 @@ fun DashboardScreen(
             )
         }
 
-        editingTransaction?.let { tx ->
+        editingTransaction?.let { tx: TransactionEntity ->
             EditTransactionDialog(
                 transaction = tx,
                 currencySymbol = uiState.currencySymbol,
                 onDismiss = { editingTransaction = null },
-                onConfirm = { updated ->
+                onConfirm = { updated: TransactionEntity ->
                     viewModel.updateTransactionWithAdmin(updated) { editingTransaction = null }
                 }
             )
         }
 
-        editingLiability?.let { liability ->
+        editingLiability?.let { liability: LiabilityEntity ->
             EditLiabilityDialog(
                 liability = liability,
                 currencySymbol = uiState.currencySymbol,
                 onDismiss = { editingLiability = null },
-                onConfirm = { updated ->
+                onConfirm = { updated: LiabilityEntity ->
                     viewModel.updateLiabilityWithAdmin(updated) { editingLiability = null }
                 }
             )
         }
     }
+}
+
+/**
+ * Edit Transaction Dialog for Admin Mode
+ */
+@Composable
+fun EditTransactionDialog(
+    transaction: TransactionEntity,
+    currencySymbol: String,
+    onDismiss: () -> Unit,
+    onConfirm: (TransactionEntity) -> Unit
+) {
+    var amountText by remember { mutableStateOf(transaction.amount.toString()) }
+    var descriptionText by remember { mutableStateOf(transaction.description) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = SurfaceDark,
+        title = {
+            Text(text = "Edit Transaction (Admin)", color = NeonCyan, fontWeight = FontWeight.Bold)
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = amountText,
+                    onValueChange = { amountText = it },
+                    label = { Text("Amount ($currencySymbol)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = descriptionText,
+                    onValueChange = { descriptionText = it },
+                    label = { Text("Description") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val amt = amountText.toDoubleOrNull() ?: transaction.amount
+                    onConfirm(transaction.copy(amount = amt, description = descriptionText))
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = NeonCyan)
+            ) {
+                Text("SAVE", color = CanvasBackground, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
+        }
+    )
+}
+
+/**
+ * Edit Liability Dialog for Admin Mode
+ */
+@Composable
+fun EditLiabilityDialog(
+    liability: LiabilityEntity,
+    currencySymbol: String,
+    onDismiss: () -> Unit,
+    onConfirm: (LiabilityEntity) -> Unit
+) {
+    var amountText by remember { mutableStateOf(liability.amount.toString()) }
+    var descriptionText by remember { mutableStateOf(liability.description) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = SurfaceDark,
+        title = {
+            Text(text = "Edit Liability (Admin)", color = NeonRed, fontWeight = FontWeight.Bold)
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = amountText,
+                    onValueChange = { amountText = it },
+                    label = { Text("Amount ($currencySymbol)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = descriptionText,
+                    onValueChange = { descriptionText = it },
+                    label = { Text("Creditor Note / Description") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val amt = amountText.toDoubleOrNull() ?: liability.amount
+                    onConfirm(liability.copy(amount = amt, description = descriptionText))
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = NeonRed)
+            ) {
+                Text("SAVE", color = CanvasBackground, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
+        }
+    )
 }
 
 /**
