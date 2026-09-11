@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import android.app.Activity
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -22,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -40,10 +42,13 @@ import com.example.ui.components.*
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.FinanceUiState
 import com.example.ui.viewmodel.FinanceViewModel
+import com.example.util.FileExportUtil
 import com.example.util.indianNumber
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 @Composable
 fun DashboardScreen(
@@ -54,15 +59,24 @@ fun DashboardScreen(
     val transactions by viewModel.transactions.collectAsStateWithLifecycle()
     val liabilities by viewModel.liabilities.collectAsStateWithLifecycle()
     val isAdminMode by viewModel.isAdminMode.collectAsStateWithLifecycle()
+    val showSyncChoice by viewModel.showSyncChoiceDialog.collectAsStateWithLifecycle()
+    val showSetNewPasswordDialog by viewModel.showSetNewPasswordDialog.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     var showAdminUnlockDialog by remember { mutableStateOf(false) }
     var showEditInitialBalanceDialog by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
     var editingTransaction by remember { mutableStateOf<TransactionEntity?>(null) }
     var editingLiability by remember { mutableStateOf<LiabilityEntity?>(null) }
+
+    // Dialog states for Exports, Passwords & Account Switch Confirmation
+    var showDateRangeExportDialog by remember { mutableStateOf(false) }
+    var showKeywordExportDialog by remember { mutableStateOf(false) }
+    var showChangePinDialog by remember { mutableStateOf(false) }
+    var showSwitchAccountWarningDialog by remember { mutableStateOf(false) }
 
     val googleSignInLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -77,6 +91,19 @@ fun DashboardScreen(
         }
     }
 
+    val passwordRecoveryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            try {
+                task.result?.let { viewModel.onPasswordRecoveryReauthSuccess(it) }
+            } catch (e: Exception) {
+                scope.launch { snackbarHostState.showSnackbar("Recovery error: ${e.localizedMessage}") }
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
         viewModel.userFeedback.collectLatest { msg ->
             snackbarHostState.showSnackbar(msg)
@@ -87,7 +114,7 @@ fun DashboardScreen(
     val scaledDensity = remember(uiState.themeMode, baseDensity) {
         Density(
             density = baseDensity.density,
-            fontScale = if (uiState.themeMode == AppTheme.BASIC) baseDensity.fontScale * 1.35f else baseDensity.fontScale
+            fontScale = if (uiState.themeMode == "BASIC") baseDensity.fontScale * 1.35f else baseDensity.fontScale
         )
     }
 
@@ -95,7 +122,7 @@ fun DashboardScreen(
         LocalAppTheme provides uiState.themeMode,
         LocalDensity provides scaledDensity
     ) {
-        val isHinata = uiState.themeMode == AppTheme.HINATA
+        val isHinata = uiState.themeMode == "HINATA"
 
         Box(
             modifier = modifier
@@ -121,12 +148,12 @@ fun DashboardScreen(
                     )
                 }
 
-                // Main Balance Cards
+                // Main Live Balance Card
                 item {
                     val formulaText = "Formula: Initial (${uiState.currencySymbol}${uiState.initialBalance.toInt()}) + Income (${uiState.currencySymbol}${uiState.totalIncome.toInt()}) - Expenses (${uiState.currencySymbol}${uiState.totalExpense.toInt()})"
 
                     when (uiState.themeMode) {
-                        AppTheme.RUH -> {
+                        "RUH" -> {
                             RuhMainBalanceCard(
                                 liveBalance = uiState.liveBalance,
                                 totalIncome = uiState.totalIncome,
@@ -134,7 +161,7 @@ fun DashboardScreen(
                                 formulaText = formulaText
                             )
                         }
-                        AppTheme.BUMBLEBEE -> {
+                        "BUMBLEBEE" -> {
                             BumblebeeMainBalanceCard(
                                 liveBalance = uiState.liveBalance,
                                 totalIncome = uiState.totalIncome,
@@ -142,7 +169,7 @@ fun DashboardScreen(
                                 formulaText = formulaText
                             )
                         }
-                        AppTheme.KAKASHI -> {
+                        "KAKASHI" -> {
                             KakashiMainBalanceCard(
                                 liveBalance = uiState.liveBalance,
                                 totalIncome = uiState.totalIncome,
@@ -150,7 +177,16 @@ fun DashboardScreen(
                                 formulaText = formulaText
                             )
                         }
+                        "HINATA" -> {
+                            HinataMainBalanceCard(
+                                liveBalance = uiState.liveBalance,
+                                totalIncome = uiState.totalIncome,
+                                totalExpenses = uiState.totalExpense,
+                                formulaText = formulaText
+                            )
+                        }
                         else -> {
+                            // "DEFAULT" (Original Neon Cyberpunk) or "BASIC"
                             HinataMainBalanceCard(
                                 liveBalance = uiState.liveBalance,
                                 totalIncome = uiState.totalIncome,
@@ -161,7 +197,7 @@ fun DashboardScreen(
                     }
                 }
 
-                // Split Balance Row
+                // Split Balance Row (Fixed Initial & Liabilities)
                 item {
                     SplitBalanceRow(
                         uiState = uiState,
@@ -184,7 +220,7 @@ fun DashboardScreen(
                     }
                 }
 
-                // Transactions Module
+                // Transaction Entry Module
                 item {
                     NormalTransactionModule(
                         currencySymbol = uiState.currencySymbol,
@@ -206,7 +242,7 @@ fun DashboardScreen(
                     }
                 }
 
-                // Audit Ledgers
+                // Permanent Audit Ledgers
                 item {
                     AuditLedgersSection(
                         transactions = transactions,
@@ -236,7 +272,7 @@ fun DashboardScreen(
             )
         }
 
-        // Dialogs
+        // 1. Admin Unlock Dialog (with Password Recovery)
         if (showAdminUnlockDialog) {
             AdminUnlockDialog(
                 onDismiss = { showAdminUnlockDialog = false },
@@ -244,10 +280,22 @@ fun DashboardScreen(
                     if (viewModel.verifyAndUnlockAdminMode(pin)) showAdminUnlockDialog = false
                 },
                 googleAccountLinked = uiState.googleAccountEmail != null,
-                onForgotPassword = {}
+                onForgotPassword = {
+                    showAdminUnlockDialog = false
+                    passwordRecoveryLauncher.launch(viewModel.driveSyncManager.getSignInIntent())
+                }
             )
         }
 
+        // 2. Recovery Reset Password Dialog
+        if (showSetNewPasswordDialog) {
+            SetNewPasswordDialog(
+                onDismiss = { viewModel.dismissSetNewPasswordDialog() },
+                onConfirm = { newPwd -> viewModel.setNewTier2PasswordViaRecovery(newPwd) }
+            )
+        }
+
+        // 3. Edit Fixed Initial Balance Dialog
         if (showEditInitialBalanceDialog) {
             EditInitialBalanceDialog(
                 currentBalance = uiState.initialBalance,
@@ -259,6 +307,7 @@ fun DashboardScreen(
             )
         }
 
+        // 4. Settings Dialog
         if (showSettingsDialog) {
             SettingsDialog(
                 uiState = uiState,
@@ -266,9 +315,96 @@ fun DashboardScreen(
                 onSelectTheme = { theme: String -> viewModel.setThemeMode(theme) },
                 onToggleLiabilities = { viewModel.setShowLiabilities(it) },
                 onSignInGoogle = { googleSignInLauncher.launch(viewModel.driveSyncManager.getSignInIntent()) },
-                onSwitchAccount = { googleSignInLauncher.launch(viewModel.driveSyncManager.getSignInIntent()) },
+                onSwitchAccount = {
+                    showSettingsDialog = false
+                    showSwitchAccountWarningDialog = true
+                },
                 onBackupNow = { viewModel.performCloudBackup() },
-                onRestoreNow = { viewModel.performCloudRestore() }
+                onRestoreNow = { viewModel.performCloudRestore() },
+                onOpenDateRangeExport = {
+                    showSettingsDialog = false
+                    showDateRangeExportDialog = true
+                },
+                onOpenKeywordExport = {
+                    showSettingsDialog = false
+                    showKeywordExportDialog = true
+                },
+                onOpenChangePin = {
+                    showSettingsDialog = false
+                    showChangePinDialog = true
+                }
+            )
+        }
+
+        // 5. Account Switch Warning Dialog
+        if (showSwitchAccountWarningDialog) {
+            SwitchAccountWarningDialog(
+                currentEmail = uiState.googleAccountEmail ?: "Google Account",
+                onDismiss = { showSwitchAccountWarningDialog = false },
+                onConfirmSwitch = {
+                    showSwitchAccountWarningDialog = false
+                    viewModel.performSwitchAccount {
+                        googleSignInLauncher.launch(viewModel.driveSyncManager.getSignInIntent())
+                    }
+                }
+            )
+        }
+
+        // 6. 4-Way Account Sync / Recovery Dialog
+        if (showSyncChoice) {
+            SyncConflictChoiceDialog(
+                onMerge = { viewModel.resolveSyncChoiceMerge() },
+                onKeepCloud = { viewModel.resolveSyncChoiceReplaceLocal() },
+                onKeepLocal = { viewModel.resolveSyncChoiceDiscardCloud() },
+                onDecideLater = { viewModel.dismissSyncChoiceDialog() }
+            )
+        }
+
+        // 7. Export by Date Range Dialog
+        if (showDateRangeExportDialog) {
+            DateRangeExportDialog(
+                onDismiss = { showDateRangeExportDialog = false },
+                onExport = { startMs, endMs, includeLiab ->
+                    val text = viewModel.buildExportText(startMs, endMs, includeLiab)
+                    val uri = FileExportUtil.saveTextToDownloads(context, "RushuFin_Export_${System.currentTimeMillis()}.txt", text)
+                    if (uri != null) {
+                        Toast.makeText(context, "Export saved to Downloads folder!", Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(context, "Failed to save file.", Toast.LENGTH_SHORT).show()
+                    }
+                    showDateRangeExportDialog = false
+                }
+            )
+        }
+
+        // 8. Export by Keyword Dialog
+        if (showKeywordExportDialog) {
+            KeywordExportDialog(
+                onDismiss = { showKeywordExportDialog = false },
+                onExport = { keywords, startMs, endMs ->
+                    val text = viewModel.buildKeywordExportText(keywords, startMs, endMs)
+                    val uri = FileExportUtil.saveTextToDownloads(context, "RushuFin_Keyword_Export_${System.currentTimeMillis()}.txt", text)
+                    if (uri != null) {
+                        Toast.makeText(context, "Export saved to Downloads folder!", Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(context, "Failed to save file.", Toast.LENGTH_SHORT).show()
+                    }
+                    showKeywordExportDialog = false
+                }
+            )
+        }
+
+        // 9. Change Passwords Dialog (Tier 1 & Tier 2)
+        if (showChangePinDialog) {
+            ChangePasswordsDialog(
+                currentTier1 = uiState.tier1Password,
+                currentTier2 = uiState.tier2Password,
+                onDismiss = { showChangePinDialog = false },
+                onConfirm = { newT1, newT2 ->
+                    viewModel.updatePasswords(newT1, newT2) {
+                        showChangePinDialog = false
+                    }
+                }
             )
         }
 
@@ -305,10 +441,10 @@ fun AppHeader(
     modifier: Modifier = Modifier
 ) {
     val theme = LocalAppTheme.current
-    val isHinata = theme == AppTheme.HINATA
-    val isKakashi = theme == AppTheme.KAKASHI
-    val isBumblebee = theme == AppTheme.BUMBLEBEE
-    val isRuh = theme == AppTheme.RUH
+    val isHinata = theme == "HINATA"
+    val isKakashi = theme == "KAKASHI"
+    val isBumblebee = theme == "BUMBLEBEE"
+    val isRuh = theme == "RUH"
 
     Row(
         modifier = modifier
@@ -450,6 +586,9 @@ fun AppHeader(
     }
 }
 
+/**
+ * Settings Dialog with All Themes, Exports, Password Management & Cloud Sync
+ */
 @Composable
 fun SettingsDialog(
     uiState: FinanceUiState,
@@ -459,7 +598,10 @@ fun SettingsDialog(
     onSignInGoogle: () -> Unit,
     onSwitchAccount: () -> Unit,
     onBackupNow: () -> Unit,
-    onRestoreNow: () -> Unit
+    onRestoreNow: () -> Unit,
+    onOpenDateRangeExport: () -> Unit,
+    onOpenKeywordExport: () -> Unit,
+    onOpenChangePin: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -467,7 +609,7 @@ fun SettingsDialog(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(Icons.Default.Settings, contentDescription = null, tint = NeonCyan)
-                Text(text = "Settings & Themes", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(text = "Settings & Preferences", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
         },
         text = {
@@ -477,54 +619,62 @@ fun SettingsDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                // THEME SELECTION SECTION
+                // 1. SCROLLABLE THEMES SELECTION (All 6 Themes including Neon Cyberpunk)
                 GlassBox(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(text = "SELECT APP THEME", color = NeonCyan, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+
+                        // 🌐 NEON CYBERPUNK (DEFAULT)
+                        ThemeOptionRow(
+                            title = "🌐 Neon Cyberpunk",
+                            description = "Electric cyan, neon green, and deep midnight dark",
+                            selected = uiState.themeMode == "DEFAULT",
+                            onClick = { onSelectTheme("DEFAULT") }
+                        )
 
                         // 🩸 RUH
                         ThemeOptionRow(
                             title = "🩸 Ruh",
                             description = "Pitch black, blood red border, Sharingan & Ꮢᴜʜ᭓Ꮢɪᴅɛʀ",
-                            selected = uiState.themeMode == AppTheme.RUH,
-                            onClick = { onSelectTheme(AppTheme.RUH) }
+                            selected = uiState.themeMode == "RUH",
+                            onClick = { onSelectTheme("RUH") }
                         )
 
                         // 🏎️ BUMBLEBEE
                         ThemeOptionRow(
                             title = "🏎️ Bumblebee",
                             description = "Metallic amber car body, flames & pitch black",
-                            selected = uiState.themeMode == AppTheme.BUMBLEBEE,
-                            onClick = { onSelectTheme(AppTheme.BUMBLEBEE) }
+                            selected = uiState.themeMode == "BUMBLEBEE",
+                            onClick = { onSelectTheme("BUMBLEBEE") }
                         )
 
                         // ⚡ KAKASHI
                         ThemeOptionRow(
                             title = "⚡ Kakashi",
                             description = "Chidori electric blue, Sharingan red & deep obsidian",
-                            selected = uiState.themeMode == AppTheme.KAKASHI,
-                            onClick = { onSelectTheme(AppTheme.KAKASHI) }
+                            selected = uiState.themeMode == "KAKASHI",
+                            onClick = { onSelectTheme("KAKASHI") }
                         )
 
                         // 🪷 HINATA
                         ThemeOptionRow(
                             title = "🪷 Hinata",
                             description = "Falling petals, lavender glow & Byakugan mint green",
-                            selected = uiState.themeMode == AppTheme.HINATA,
-                            onClick = { onSelectTheme(AppTheme.HINATA) }
+                            selected = uiState.themeMode == "HINATA",
+                            onClick = { onSelectTheme("HINATA") }
                         )
 
                         // 📄 BASIC (LARGE TEXT)
                         ThemeOptionRow(
                             title = "📄 Basic (Large Text)",
                             description = "Clean large text high legibility theme",
-                            selected = uiState.themeMode == AppTheme.BASIC,
-                            onClick = { onSelectTheme(AppTheme.BASIC) }
+                            selected = uiState.themeMode == "BASIC",
+                            onClick = { onSelectTheme("BASIC") }
                         )
                     }
                 }
 
-                // LIABILITIES TOGGLE
+                // 2. LIABILITIES TOGGLE
                 GlassBox(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
                     Row(
                         modifier = Modifier.padding(12.dp).fillMaxWidth(),
@@ -543,15 +693,16 @@ fun SettingsDialog(
                     }
                 }
 
-                // GOOGLE DRIVE BACKUP & ACCOUNT SWITCHING
+                // 3. GOOGLE DRIVE BACKUP & ACCOUNT SWITCHING
                 GlassBox(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(text = "GOOGLE DRIVE BACKUP", color = NeonCyan, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         Text(
-                            text = if (uiState.googleAccountEmail != null) "Connected: ${uiState.googleAccountEmail}" else "Link your Google account to auto-backup.",
+                            text = if (uiState.googleAccountEmail != null) "Connected:\n${uiState.googleAccountEmail}" else "Link your Google account to auto-backup.",
                             color = TextSecondary,
                             fontSize = 11.sp
                         )
+
                         if (uiState.googleAccountEmail == null) {
                             Button(
                                 onClick = onSignInGoogle,
@@ -578,6 +729,7 @@ fun SettingsDialog(
                                     Text("RESTORE", color = NeonCyan, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                                 }
                             }
+
                             OutlinedButton(
                                 onClick = onSwitchAccount,
                                 modifier = Modifier.fillMaxWidth()
@@ -586,6 +738,47 @@ fun SettingsDialog(
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text("Switch / Change Google Account", fontSize = 11.sp)
                             }
+                        }
+                    }
+                }
+
+                // 4. DATA EXPORTS (.TXT FILES)
+                GlassBox(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
+                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(text = "DATA EXPORTS (.TXT FILES)", color = NeonCyan, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+
+                        OutlinedButton(
+                            onClick = onOpenDateRangeExport,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Export by Date Range", fontSize = 11.sp)
+                        }
+
+                        OutlinedButton(
+                            onClick = onOpenKeywordExport,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Export Categorized by Keyword", fontSize = 11.sp)
+                        }
+                    }
+                }
+
+                // 5. SECURITY & PASSWORDS
+                GlassBox(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
+                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(text = "SECURITY PASSWORDS", color = NeonCyan, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+
+                        OutlinedButton(
+                            onClick = onOpenChangePin,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Change Tier 1 / Tier 2 Passwords", fontSize = 11.sp)
                         }
                     }
                 }
@@ -632,6 +825,408 @@ fun ThemeOptionRow(
             Text(description, color = TextSecondary, fontSize = 10.sp)
         }
     }
+}
+
+/**
+ * Explicit Account Switch Warning Dialog
+ * Alerts user that local storage will be cleared and reset to 0, backed up first,
+ * and allows switching to another Google Account to restore its backup.
+ */
+@Composable
+fun SwitchAccountWarningDialog(
+    currentEmail: String,
+    onDismiss: () -> Unit,
+    onConfirmSwitch: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = SurfaceDark,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Default.Warning, contentDescription = null, tint = NeonYellow)
+                Text("Switch Google Account", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = "Current account: $currentEmail",
+                    color = NeonCyan,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = "1. Your current data will be safely backed up to Google Drive first.\n\n" +
+                            "2. Local storage will be reset to ₹0 (cleared) so your device starts on a clean slate.\n\n" +
+                            "3. You will choose your new Google Account, and then you can restore that account's cloud backup.",
+                    color = TextSecondary,
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirmSwitch,
+                colors = ButtonDefaults.buttonColors(containerColor = NeonRed)
+            ) {
+                Text("YES, BACKUP & SWITCH", color = CanvasBackground, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("CANCEL", color = TextSecondary)
+            }
+        }
+    )
+}
+
+/**
+ * 4-Way Account Switching Dialog (Merge, Cloud, Local, Decide Later)
+ */
+@Composable
+fun SyncConflictChoiceDialog(
+    onMerge: () -> Unit,
+    onKeepCloud: () -> Unit,
+    onKeepLocal: () -> Unit,
+    onDecideLater: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDecideLater,
+        containerColor = SurfaceDark,
+        title = {
+            Text("Sync Account Data", color = NeonCyan, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    "You just linked a Google account. How would you like to handle your data?",
+                    color = TextPrimary,
+                    fontSize = 12.sp
+                )
+
+                Button(
+                    onClick = onMerge,
+                    colors = ButtonDefaults.buttonColors(containerColor = NeonGreen),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("1. MERGE BOTH (Recommended)", color = CanvasBackground, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                }
+
+                Button(
+                    onClick = onKeepCloud,
+                    colors = ButtonDefaults.buttonColors(containerColor = NeonCyan),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("2. KEEP CLOUD (Replace Local)", color = CanvasBackground, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                }
+
+                Button(
+                    onClick = onKeepLocal,
+                    colors = ButtonDefaults.buttonColors(containerColor = NeonYellow),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("3. KEEP LOCAL (Overwrite Cloud)", color = CanvasBackground, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                }
+
+                OutlinedButton(
+                    onClick = onDecideLater,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("4. DECIDE LATER", color = TextSecondary, fontSize = 11.sp)
+                }
+            }
+        },
+        confirmButton = {}
+    )
+}
+
+/**
+ * Export by Date Range Dialog
+ */
+@Composable
+fun DateRangeExportDialog(
+    onDismiss: () -> Unit,
+    onExport: (startTimestamp: Long?, endTimestamp: Long?, includeLiabilities: Boolean) -> Unit
+) {
+    var startDateText by remember { mutableStateOf("") }
+    var endDateText by remember { mutableStateOf("") }
+    var includeLiabilities by remember { mutableStateOf(true) }
+
+    val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = SurfaceDark,
+        title = { Text("Export by Date Range", color = NeonCyan, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Enter dates in DD/MM/YYYY format or leave blank for all time.", color = TextSecondary, fontSize = 12.sp)
+                OutlinedTextField(
+                    value = startDateText,
+                    onValueChange = { startDateText = it },
+                    label = { Text("Start Date (DD/MM/YYYY)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = endDateText,
+                    onValueChange = { endDateText = it },
+                    label = { Text("End Date (DD/MM/YYYY)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = includeLiabilities, onCheckedChange = { includeLiabilities = it })
+                    Text("Include Liabilities in report", color = TextPrimary, fontSize = 12.sp)
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val startMs = try { if (startDateText.isNotBlank()) sdf.parse(startDateText.trim())?.time else null } catch (e: Exception) { null }
+                    val endMs = try { if (endDateText.isNotBlank()) (sdf.parse(endDateText.trim())?.time?.plus(86400000L - 1L)) else null } catch (e: Exception) { null }
+                    onExport(startMs, endMs, includeLiabilities)
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = NeonCyan)
+            ) {
+                Text("DOWNLOAD TXT", color = CanvasBackground, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
+        }
+    )
+}
+
+/**
+ * Export by Keyword Dialog
+ */
+@Composable
+fun KeywordExportDialog(
+    onDismiss: () -> Unit,
+    onExport: (keywords: List<String>, startTimestamp: Long?, endTimestamp: Long?) -> Unit
+) {
+    var keywordsText by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = SurfaceDark,
+        title = { Text("Export Categorized by Keyword", color = NeonCyan, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Enter keywords separated by commas (e.g. Salary, Rent, Food, Travel).", color = TextSecondary, fontSize = 12.sp)
+                OutlinedTextField(
+                    value = keywordsText,
+                    onValueChange = { keywordsText = it },
+                    label = { Text("Keywords (comma separated)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val list = keywordsText.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                    onExport(list, null, null)
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = NeonCyan)
+            ) {
+                Text("DOWNLOAD TXT", color = CanvasBackground, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
+        }
+    )
+}
+
+/**
+ * Change Passwords Dialog (Tier 1 & Tier 2)
+ */
+@Composable
+fun ChangePasswordsDialog(
+    currentTier1: String,
+    currentTier2: String,
+    onDismiss: () -> Unit,
+    onConfirm: (newTier1: String, newTier2: String) -> Unit
+) {
+    var tier1Text by remember { mutableStateOf(currentTier1) }
+    var tier2Text by remember { mutableStateOf(currentTier2) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = SurfaceDark,
+        title = { Text("Change Security Passwords", color = NeonCyan, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = tier1Text,
+                    onValueChange = { tier1Text = it },
+                    label = { Text("Tier 1 Transaction PIN") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = tier2Text,
+                    onValueChange = { tier2Text = it },
+                    label = { Text("Tier 2 Master Password") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(tier1Text.trim(), tier2Text.trim()) },
+                colors = ButtonDefaults.buttonColors(containerColor = NeonCyan)
+            ) {
+                Text("SAVE PASSWORDS", color = CanvasBackground, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
+        }
+    )
+}
+
+/**
+ * Reset Password Dialog via Google Recovery
+ */
+@Composable
+fun SetNewPasswordDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (newTier2Password: String) -> Unit
+) {
+    var newPwd by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = SurfaceDark,
+        title = { Text("Reset Master Password", color = NeonCyan, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Your identity was verified with Google! Enter your new Tier 2 Master Password:", color = TextSecondary, fontSize = 12.sp)
+                OutlinedTextField(
+                    value = newPwd,
+                    onValueChange = { newPwd = it },
+                    label = { Text("New Master Password") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(newPwd.trim()) },
+                colors = ButtonDefaults.buttonColors(containerColor = NeonCyan)
+            ) {
+                Text("SAVE PASSWORD", color = CanvasBackground, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
+        }
+    )
+}
+
+@Composable
+fun AdminUnlockDialog(
+    onDismiss: () -> Unit,
+    onUnlock: (pin: String) -> Unit,
+    googleAccountLinked: Boolean,
+    onForgotPassword: () -> Unit
+) {
+    var pinText by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = SurfaceDark,
+        title = { Text(text = "Tier 2 Master Access", color = TextPrimary, fontWeight = FontWeight.Bold) },
+        text = {
+            Column {
+                Text("Enter Master Password (Default: 9999) to unlock Admin Mode.", color = TextSecondary, fontSize = 13.sp)
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = pinText,
+                    onValueChange = { pinText = it },
+                    label = { Text("Master Password") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                if (googleAccountLinked) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextButton(onClick = onForgotPassword, modifier = Modifier.align(Alignment.End)) {
+                        Text("Forgot Password? Reset via Google", color = NeonCyan, fontSize = 11.sp)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onUnlock(pinText) },
+                colors = ButtonDefaults.buttonColors(containerColor = NeonRed)
+            ) {
+                Text("UNLOCK", color = CanvasBackground, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
+        }
+    )
+}
+
+@Composable
+fun EditInitialBalanceDialog(
+    currentBalance: Double,
+    currencySymbol: String,
+    onDismiss: () -> Unit,
+    onConfirm: (Double) -> Unit
+) {
+    var balanceText by remember { mutableStateOf(currentBalance.toString()) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = SurfaceDark,
+        title = { Text(text = "Edit Fixed Starting Balance", color = NeonYellow, fontWeight = FontWeight.Bold) },
+        text = {
+            Column {
+                Text("Changes apply to Main Live Balance immediately.", color = TextSecondary, fontSize = 13.sp)
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = balanceText,
+                    onValueChange = { balanceText = it },
+                    label = { Text("Starting Funds ($currencySymbol)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val bal = balanceText.toDoubleOrNull() ?: currentBalance
+                    onConfirm(bal)
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = NeonYellow)
+            ) {
+                Text("UPDATE", color = CanvasBackground, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
+        }
+    )
 }
 
 @Composable
@@ -743,10 +1338,10 @@ fun SplitBalanceRow(
     modifier: Modifier = Modifier
 ) {
     val theme = LocalAppTheme.current
-    val isHinata = theme == AppTheme.HINATA
-    val isKakashi = theme == AppTheme.KAKASHI
-    val isBumblebee = theme == AppTheme.BUMBLEBEE
-    val isRuh = theme == AppTheme.RUH
+    val isHinata = theme == "HINATA"
+    val isKakashi = theme == "KAKASHI"
+    val isBumblebee = theme == "BUMBLEBEE"
+    val isRuh = theme == "RUH"
     val isDebtFree = uiState.currentLiability <= 0.001
 
     val liabilityGlow = when {
@@ -928,9 +1523,9 @@ fun NormalTransactionModule(
     modifier: Modifier = Modifier
 ) {
     val theme = LocalAppTheme.current
-    val isRuh = theme == AppTheme.RUH
-    val isBumblebee = theme == AppTheme.BUMBLEBEE
-    val isKakashi = theme == AppTheme.KAKASHI
+    val isRuh = theme == "RUH"
+    val isBumblebee = theme == "BUMBLEBEE"
+    val isKakashi = theme == "KAKASHI"
 
     var selectedType by remember { mutableStateOf("INCOME") }
     var amountText by remember { mutableStateOf("") }
@@ -1149,9 +1744,9 @@ fun LiabilityManagementModule(
     modifier: Modifier = Modifier
 ) {
     val theme = LocalAppTheme.current
-    val isRuh = theme == AppTheme.RUH
-    val isBumblebee = theme == AppTheme.BUMBLEBEE
-    val isKakashi = theme == AppTheme.KAKASHI
+    val isRuh = theme == "RUH"
+    val isBumblebee = theme == "BUMBLEBEE"
+    val isKakashi = theme == "KAKASHI"
 
     var selectedAction by remember { mutableStateOf("ADD_LIABILITY") }
     var amountText by remember { mutableStateOf("") }
@@ -1329,9 +1924,9 @@ fun AuditLedgersSection(
     modifier: Modifier = Modifier
 ) {
     val theme = LocalAppTheme.current
-    val isRuh = theme == AppTheme.RUH
-    val isBumblebee = theme == AppTheme.BUMBLEBEE
-    val isKakashi = theme == AppTheme.KAKASHI
+    val isRuh = theme == "RUH"
+    val isBumblebee = theme == "BUMBLEBEE"
+    val isKakashi = theme == "KAKASHI"
 
     var selectedTab by remember { mutableIntStateOf(0) }
 
@@ -1445,7 +2040,7 @@ fun TransactionItemCard(
     modifier: Modifier = Modifier
 ) {
     val theme = LocalAppTheme.current
-    val isRuh = theme == AppTheme.RUH
+    val isRuh = theme == "RUH"
     val isIncome = transaction.type.equals("INCOME", ignoreCase = true)
     val amountColor = if (isIncome) {
         if (isRuh) RuhIncomeRed else NeonGreen
@@ -1509,7 +2104,7 @@ fun LiabilityItemCard(
     modifier: Modifier = Modifier
 ) {
     val theme = LocalAppTheme.current
-    val isRuh = theme == AppTheme.RUH
+    val isRuh = theme == "RUH"
     val isAdd = liability.actionType.equals("ADD_LIABILITY", ignoreCase = true)
     val amountColor = if (isAdd) {
         if (isRuh) RuhExpenseRed else NeonRed
@@ -1561,90 +2156,4 @@ fun LiabilityItemCard(
             }
         }
     }
-}
-
-@Composable
-fun AdminUnlockDialog(
-    onDismiss: () -> Unit,
-    onUnlock: (pin: String) -> Unit,
-    googleAccountLinked: Boolean,
-    onForgotPassword: () -> Unit
-) {
-    var pinText by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = SurfaceDark,
-        title = { Text(text = "Tier 2 Master Access", color = TextPrimary, fontWeight = FontWeight.Bold) },
-        text = {
-            Column {
-                Text("Enter Master Password (Default: 9999) to unlock Admin Mode.", color = TextSecondary, fontSize = 13.sp)
-                Spacer(modifier = Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = pinText,
-                    onValueChange = { pinText = it },
-                    label = { Text("Master Password") },
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = { onUnlock(pinText) },
-                colors = ButtonDefaults.buttonColors(containerColor = NeonRed)
-            ) {
-                Text("UNLOCK", color = CanvasBackground, fontWeight = FontWeight.Bold)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
-        }
-    )
-}
-
-@Composable
-fun EditInitialBalanceDialog(
-    currentBalance: Double,
-    currencySymbol: String,
-    onDismiss: () -> Unit,
-    onConfirm: (Double) -> Unit
-) {
-    var balanceText by remember { mutableStateOf(currentBalance.toString()) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = SurfaceDark,
-        title = { Text(text = "Edit Fixed Starting Balance", color = NeonYellow, fontWeight = FontWeight.Bold) },
-        text = {
-            Column {
-                Text("Changes apply to Main Live Balance immediately.", color = TextSecondary, fontSize = 13.sp)
-                Spacer(modifier = Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = balanceText,
-                    onValueChange = { balanceText = it },
-                    label = { Text("Starting Funds ($currencySymbol)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    val bal = balanceText.toDoubleOrNull() ?: currentBalance
-                    onConfirm(bal)
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = NeonYellow)
-            ) {
-                Text("UPDATE", color = CanvasBackground, fontWeight = FontWeight.Bold)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
-        }
-    )
 }
